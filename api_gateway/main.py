@@ -2,7 +2,7 @@
 
 import os
 
-import aiohttp  # Import aiohttp
+import aiohttp
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
