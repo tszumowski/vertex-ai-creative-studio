@@ -1,0 +1,4 @@
+absl-py==2.1.0
+google-api-core==2.24.0
+google-cloud-aiplatform==1.75.0
+pytest==8.3.4

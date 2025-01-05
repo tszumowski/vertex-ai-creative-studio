@@ -1,0 +1,5 @@
+indent-width = 4
+
+[lint]
+select = ["ALL"]
+ignore = ["D", "BLE", "PLR", "PTH", "EM", "TRY", "S314", "PERF203", "PERF401", "UP032", "SLF001", "PT", "FBT001"]
