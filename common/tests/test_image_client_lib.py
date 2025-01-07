@@ -3,10 +3,10 @@
 import os
 import unittest
 from unittest import mock
+
 import vertexai
 from vertexai.preview.vision_models import ImageGenerationModel
 
-# Import the module to be tested
 from common import imagen_client_lib
 
 
@@ -22,7 +22,7 @@ class ImagenClientTest(unittest.TestCase):
 
         self.enterContext(mock.patch.object(vertexai, "init", autospec=True))
         self.mock_image_generation_model = self.enterClassContext(
-            mock.patch.object(ImageGenerationModel, "from_pretrained")
+            mock.patch.object(ImageGenerationModel, "from_pretrained"),
         )
 
         self.mock_image = mock.MagicMock()
