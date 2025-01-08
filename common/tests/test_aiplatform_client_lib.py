@@ -1,17 +1,16 @@
-"""Tests for the ImagenClient."""
+"""Tests for the AIPlatformClient."""
 
 import os
 import unittest
 from unittest import mock
 
-import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel
 from google.cloud import aiplatform
-from common import imagen_client_lib, storage_client_lib
+
+from common import aiplatform_client_lib, storage_client_lib, vertexai_client_lib
 
 
-class ImagenClientTest(unittest.TestCase):
-    """Test class for the ImagenClient."""
+class AIPlatformClientTest(unittest.TestCase):
+    """Test class for the AIPlatformClient."""
 
     def setUp(self) -> None:
         """Sets up the test environment."""
@@ -26,63 +25,22 @@ class ImagenClientTest(unittest.TestCase):
             mock.patch.dict(os.environ, {"IMAGE_CREATION_BUCKET": "test-bucket"}),
         )
 
-        self.enterContext(mock.patch.object(vertexai, "init", autospec=True))
-        self.mock_image_generation_model = self.enterClassContext(
-            mock.patch.object(ImageGenerationModel, "from_pretrained"),
-        )
+        self.enterContext(mock.patch.object(aiplatform, "init", autospec=True))
+
         self.mock_storage_client = self.enterClassContext(
             mock.patch.object(storage_client_lib, "StorageClient")
         )
+        self.mock_vertexai_client = self.enterClassContext(
+            mock.patch.object(vertexai_client_lib, "VertexAIClient")
+        )
+        self.mock_vertexai_client.return_value.generate_description_from_image.return_value = "Fake description"  # noqa: E501
         self.mock_ai_platform_client = self.enterClassContext(
             mock.patch.object(aiplatform.gapic, "PredictionServiceClient"),
         )
-        self.mock_image = mock.MagicMock()
-        self.mock_image._as_base64_string.return_value = b"mock_image_data"
-        self.mock_image._gcs_uri = "gs://test-bucket/path/to/image.jpg"
-
-    def test_generate_images_success(self) -> None:
-        """Tests generating images successfully."""
-        self.mock_image_generation_model.return_value.generate_images.return_value = (
-            mock.MagicMock(images=[self.mock_image])
-        )
-        imagen_client = imagen_client_lib.ImagenClient()
-
-        generated_images_uris = imagen_client.generate_images(
-            generation_model="imagen-base",
-            prompt="test prompt",
-            add_watermark=False,
-            aspect_ratio="1:1",
-            num_images=1,
-            language="en",
-            negative_prompt=None,
-        )
-
-        self.assertEqual(generated_images_uris, ["gs://test-bucket/path/to/image.jpg"])
-
-    def test_generate_images_failure(self) -> None:
-        """Tests handling failures when generating images."""
-        self.mock_image_generation_model.return_value.generate_images.side_effect = (
-            Exception("Test exception")
-        )
-        imagen_client = imagen_client_lib.ImagenClient()
-
-        with self.assertRaisesRegex(
-            imagen_client_lib.ImageClientError,
-            "ImagenClient: Could not generate images Test exception",
-        ):
-            imagen_client.generate_images(
-                generation_model="imagen-base",
-                prompt="test prompt",
-                add_watermark=False,
-                aspect_ratio="1:1",
-                num_images=1,
-                language="en",
-                negative_prompt=None,
-            )
 
     def test_edit_image(self) -> None:
-        imagen_client = imagen_client_lib.ImagenClient()
-        imagen_client.edit_image(
+        client = aiplatform_client_lib.AIPlatformClient()
+        client.edit_image(
             image_uri="gs://fake/path/to/image.jpg",
             prompt="fake prompt",
         )
@@ -100,7 +58,7 @@ class ImagenClientTest(unittest.TestCase):
                     instances=[
                         {
                             "image": {"gcsUri": "gs://fake/path/to/image.jpg"},
-                            "prompt": "",
+                            "prompt": "Fake description",
                         },
                     ],
                     parameters={"mode": "foreground"},

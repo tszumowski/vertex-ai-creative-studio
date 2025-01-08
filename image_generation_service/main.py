@@ -4,7 +4,7 @@ import fastapi
 import google.cloud.logging
 from absl import logging
 
-from common import imagen_client_lib
+from common import vertexai_client_lib
 from image_generation_service.models import (
     ImageGenerationRequest,
     ImageGenerationResponse,
@@ -23,7 +23,7 @@ async def generate_images(request: ImageGenerationRequest) -> ImageGenerationRes
         kwargs = request.dict()
         worker = ImageGenerationServiceWorker()
         return worker.execute(**kwargs)
-    except imagen_client_lib.ImageClientError as err:
+    except vertexai_client_lib.ImageClientError as err:
         logging.error(
             "ImageGenerationService: An error occured trying to generate images %s", err
         )

@@ -1,16 +1,12 @@
-"""Module to interact with Imagen via VertexAI."""
-
 from __future__ import annotations
 
 import os
 from typing import Any
 
-import vertexai
 from absl import logging
 from google.cloud import aiplatform
-from vertexai.preview.vision_models import ImageGenerationModel
 
-from common import storage_client_lib
+from common import storage_client_lib, vertexai_client_lib
 
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
@@ -26,20 +22,14 @@ EDIT_ENDPOINT = (
 )
 
 
-class ImageClientError(Exception):
-    """Base ImageClientError class"""
+class AIPlatformClient:
+    """Class to interact with Gemini."""
 
-
-class ImagenClient:
-    """Class to interact with the Imagen models."""
-
-    def __init__(
-        self,
-    ) -> None:
-        """Instantiates the ImagenClient."""
+    def __init__(self) -> None:
+        """Instantiates the Gemini Client."""
         self.project_id = os.environ.get("GCP_PROJECT_ID")
         self.region = os.environ.get("GCP_REGION")
-        vertexai.init(project=self.project_id, location=self.region)
+        aiplatform.init(project=self.project_id, location=self.region)
         self.ai_platform_client = aiplatform.gapic.PredictionServiceClient(
             client_options={
                 "api_endpoint": AI_PLATFORM_REGIONAL_ENDPOINT.format(region=self.region)
@@ -52,64 +42,7 @@ class ImagenClient:
             AI_PLATFORM_REGIONAL_ENDPOINT.format(region=self.region),
         )
         self.storage_client = storage_client_lib.StorageClient()
-        self.bucket_name = os.environ.get("IMAGE_CREATION_BUCKET")
-        self.bucket_uri = f"gs://{self.bucket_name}"
-        logging.info("ImagenClient: Instantiated.")
-
-    def generate_images(
-        self,
-        generation_model: str,
-        prompt: str,
-        add_watermark: bool,
-        aspect_ratio: str,
-        num_images: int,
-        language: str,
-        negative_prompt: str,
-    ) -> list[str]:
-        """Generates a set of images.
-
-        Args:
-            generation_model: The model to use.
-            prompt: The prompt.
-            add_watermark: Whether to add a watermark or not.
-            aspect_ratio: The aspect ratio of the images.
-            num_images: The number of images to generate.
-            language: The language.
-            negative_prompt: The negative prompt.
-
-        Returns:
-            A list of GCS uris.
-
-        Raises:
-            ImageClientError: When the images could not be generated.
-        """
-        generation_model = ImageGenerationModel.from_pretrained(generation_model)
-        try:
-            generated_images_uris = []
-            response = generation_model.generate_images(
-                prompt=prompt,
-                add_watermark=add_watermark,
-                aspect_ratio=aspect_ratio,
-                number_of_images=num_images,
-                output_gcs_uri=self.bucket_uri,
-                language=language,
-                negative_prompt=negative_prompt,
-            )
-
-            for index, image in enumerate(response.images):
-                image_size = len(image._as_base64_string())
-                logging.info(
-                    "ImagenClient: Generated image: %s size: %s at %s",
-                    index,
-                    image_size,
-                    image._gcs_uri,
-                )
-                generated_images_uris.append(image._gcs_uri)
-        except Exception as ex:
-            raise ImageClientError(
-                f"ImagenClient: Could not generate images {ex}",
-            ) from ex
-        return generated_images_uris
+        self.vertexai_client = vertexai_client_lib.VertexAIClient()
 
     def edit_image(
         self,
@@ -182,7 +115,7 @@ class ImagenClient:
         return response
 
     def _get_image_segmentation_mask(self, image_uri: str, mode: str) -> dict[str, Any]:
-        description = ""
+        description = self.vertexai_client.generate_description_from_image(image_uri)
 
         instances = []
         instances.append({"image": {"gcsUri": image_uri}})
