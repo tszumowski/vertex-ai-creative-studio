@@ -76,4 +76,6 @@ class StorageClientTest(unittest.TestCase):
             _FAKE_BUCKET_NAME,
             "fake_file_path",
         )
-        self.mock_blob.download_as_bytes.assert_called_once_with()
+        self.mock_blob.download_as_bytes.assert_has_calls([
+            mock.call()
+        ])
