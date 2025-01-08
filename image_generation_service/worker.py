@@ -1,16 +1,16 @@
 """Worker for generating images."""
 
-from common import vertexai_client_lib
-from common import base_worker
+from typing import Any
+
+from common import base_worker, vertexai_client_lib
 
 
 class ImageGenerationServiceWorker(base_worker.BaseWorker):
     """Processes an image generation request."""
 
-    def execute(self, **kwargs):
+    def execute(self, **kwargs: dict[str, Any]) -> list[str]:
         """Execute the Image generation process."""
-        model = kwargs.pop("model")
-        client = vertexai_client_lib.ImagenClient(model)
+        client = vertexai_client_lib.ImagenClient()
         images = client.generate_images(**kwargs)
         # Add other tasks e.g. persiting to database here.
         return images

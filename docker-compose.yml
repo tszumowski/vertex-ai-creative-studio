@@ -1,0 +1,17 @@
+version: "3.3"
+
+services:
+  image_generation_service:
+    image: 'gcr.io/$PROJECT_ID/image-generation-service'
+    build:
+      context: .
+      dockerfile: ./image_generation_service/Dockerfile
+    ports:
+      - "8000:8000"
+  api_gateway:
+    image: 'gcr.io/$PROJECT_ID/api-gateway'
+    build:
+      context: .
+      dockerfile: ./api_gateway/Dockerfile 
+    ports:
+      - "8001:8000"

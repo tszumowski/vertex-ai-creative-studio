@@ -23,7 +23,7 @@ async def generate_images(request: ImageGenerationRequest) -> ImageGenerationRes
         kwargs = request.dict()
         worker = ImageGenerationServiceWorker()
         return worker.execute(**kwargs)
-    except vertexai_client_lib.ImageClientError as err:
+    except vertexai_client_lib.VertexAIClientError as err:
         logging.error(
             "ImageGenerationService: An error occured trying to generate images %s", err
         )

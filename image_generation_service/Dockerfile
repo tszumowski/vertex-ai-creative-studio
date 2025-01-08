@@ -1,28 +1,24 @@
-# Use a suitable base image (e.g., Python with your desired version)
 FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy the requirements file from the common directory (one level up)
-COPY ../common/requirements.txt .
+# Copy the common directory 
+COPY ./common ./common 
 
 # Install the common dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the common directory (one level up)
-COPY ../common ./common
+RUN pip install --no-cache-dir -r ./common/requirements.txt
 
 # Copy the service's requirements file
-COPY ./requirements.txt .
+COPY ./image_generation_service/requirements.txt .
 
 # Install the service-specific dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the service's code
-COPY . .
+# Copy the service's code 
+COPY ./image_generation_service . 
 
 # Expose the service's port
 EXPOSE 8000
 
-# Command to run the service (replace with your actual command)
+# Command to run the service
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,18 +1,18 @@
 """Module to interact with Imagen via VertexAI."""
 
 from __future__ import annotations
-from typing import Optional, cast
-import os
-from typing import Any
-import mimetypes
-import vertexai
-from absl import logging
-from vertexai.preview.vision_models import ImageGenerationModel
-from vertexai import generative_models
-from common import storage_client_lib
 
 import dataclasses
+import mimetypes
+import os
+from typing import cast
 
+import vertexai
+from absl import logging
+from vertexai import generative_models
+from vertexai.preview.vision_models import ImageGenerationModel
+
+from common import storage_client_lib
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 SEGMENTATION_ENDPOINT = (
@@ -73,9 +73,10 @@ class VertexAIClient:
         self,
     ) -> None:
         """Instantiates the VertexAIClient."""
-        self.project_id = os.environ.get("GCP_PROJECT_ID")
+        self.project_name = os.environ.get("GCP_PROJECT_NAME")
         self.region = os.environ.get("GCP_REGION")
-        vertexai.init(project=self.project_id, location=self.region)
+        vertexai.init(project=self.project_name, location=self.region)
+
         self.storage_client = storage_client_lib.StorageClient()
         self.bucket_name = os.environ.get("IMAGE_CREATION_BUCKET")
         self.bucket_uri = f"gs://{self.bucket_name}"

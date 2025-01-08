@@ -9,7 +9,12 @@ from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
-_IMAGE_GENERATION_SERVICE_URL = os.environ.get("IMAGE_GENERATION_SERVICE_URL")
+PROJECT_NUMBER = os.environ.get("GCP_PROJECT_NUMBER")
+REGION = os.environ.get("GCP_REGION")
+
+_IMAGE_GENERATION_SERVICE_URL = (
+    f"https://image-generation-service-{PROJECT_NUMBER}.{REGION}.run.app"
+)
 
 
 @app.post("/image-generation/generate_images")

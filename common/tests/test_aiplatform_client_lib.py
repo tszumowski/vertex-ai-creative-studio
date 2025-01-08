@@ -16,7 +16,7 @@ class AIPlatformClientTest(unittest.TestCase):
         """Sets up the test environment."""
         super().setUp()
         self.enterContext(
-            mock.patch.dict(os.environ, {"GCP_PROJECT_ID": "test-project"}),
+            mock.patch.dict(os.environ, {"GCP_PROJECT_NAME": "test-project"}),
         )
         self.enterContext(
             mock.patch.dict(os.environ, {"GCP_REGION": "test-region"}),
@@ -50,6 +50,10 @@ class AIPlatformClientTest(unittest.TestCase):
             mime_type=mock.ANY,
             file_name="path/to/image-mask.jpg",
             decode=True,
+        )
+        self.mock_storage_client.return_value.download_as_string.assert_called_once_with(
+            bucket_name="fake",
+            file_name="path/to/image.jpg",
         )
         self.mock_ai_platform_client.return_value.predict.assert_has_calls(
             [

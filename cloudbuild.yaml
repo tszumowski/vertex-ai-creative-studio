@@ -1,0 +1,9 @@
+steps:
+- name: 'docker/compose:1.19.0'
+  args: ['-f', 'docker-compose.yml', 'up', '-d']
+  env:
+    - 'PROJECT_ID=$PROJECT_ID'
+- name: 'docker/compose:1.19.0'
+  args: ['-f', 'docker-compose.yml', 'push']
+  env:
+      - 'PROJECT_ID=$PROJECT_ID'
