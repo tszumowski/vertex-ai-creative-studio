@@ -58,3 +58,8 @@ ASPECT_RATIO_OPTIONS = [
     me.SelectOption(label="16:9", value="16:9"),
     me.SelectOption(label="9:16", value="9:16"),
 ]
+
+IMAGE_MODEL_OPTIONS = [
+    me.SelectOption(label="Imagen 3 Fast", value="imagen-3.0-fast-generate-001"),
+    me.SelectOption(label="Imagen 3", value="imagen-3.0-generate-001"),
+]

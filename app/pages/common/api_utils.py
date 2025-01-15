@@ -30,10 +30,10 @@ def make_secure_post_request(
     auth_request = google.auth.transport.requests.Request()
     id_token = google.oauth2.id_token.fetch_id_token(
         auth_request,
-        config.API_GATEWAY_URL,
+        config.api_gateway_url,
     )
     headers = {"Authorization": f"Bearer {id_token}"}
-    generate_images_url = os.path.join(config.API_GATEWAY_URL, endpoint)
+    generate_images_url = os.path.join(config.api_gateway_url, endpoint)
     response = requests.post(
         generate_images_url,
         json=json,

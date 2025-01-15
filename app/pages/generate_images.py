@@ -1,20 +1,19 @@
 from __future__ import annotations
-import json
-from pages.common import constants, api_utils
-import urllib
-import requests
+
 import dataclasses
-import os
+import json
 import secrets
-from collections.abc import Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import mesop as me
 from components.header import header
 from config import config_lib
-
 from state.state import AppState
 
+from pages.common import api_utils, constants
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 config = config_lib.AppConfig()
 
@@ -39,7 +38,7 @@ class PageState:
     temp_name: str = ""
     is_loading: bool = False
 
-    model: str = ""
+    model: str = config.default_image_model
     image_uris: list[str] = dataclasses.field(default_factory=list)
 
     # Image prompt and related settings
@@ -111,8 +110,20 @@ def content(app_state: me.state) -> None:
                             color="gray",
                         ),
                     )
-                me.box(style=me.Style(height="16px"))
-                # Prompt
+                    with me.box(
+                        style=me.Style(
+                            display="flex",
+                            justify_content="space-between",
+                        ),
+                    ):
+                        me.select(
+                            label="Imagen version",
+                            options=constants.IMAGE_MODEL_OPTIONS,
+                            key="model",
+                            on_selection_change=modify_state,
+                            value=config.default_image_model,
+                        )
+                    # Prompt
                 with me.box(
                     style=me.Style(
                         margin=me.Margin(left="auto", right="auto"),
@@ -438,10 +449,11 @@ def generate_images(event: me.ClickEvent) -> Generator[Any, Any, Any]:
         "add_watermark": state.add_watermark,
     }
     response = api_utils.make_secure_post_request(
-        endpoint="generate_images",
+        endpoint="image-generation/generate_images",
         json=payload,
     )
-    state.image_uris = json.dumps(response.content)
+    print(response.json())
+    state.image_uris = json.dumps(response.content)["images"]
     state.is_loading = False
     yield
 
