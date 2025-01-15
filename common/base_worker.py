@@ -1,5 +1,7 @@
 """Base Service Worker."""
 
+from __future__ import annotations
+
 import abc
 from typing import Any
 
@@ -9,7 +11,7 @@ from absl import logging
 class BaseWorker(abc.ABC):
     def __init__(
         self,
-        settings: Any,  # Needs to be defined.
+        settings: Any | None = None,  # Needs to be defined.
     ) -> None:
         """Initializes the Google Ads worker.
 

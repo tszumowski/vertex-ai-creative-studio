@@ -26,19 +26,19 @@ class AIPlatformClient:
 
     def __init__(self) -> None:
         """Instantiates the AIPlatform Client."""
-        self.project_name = os.environ.get("GCP_PROJECT_NAME")
-        self.region = os.environ.get("GCP_REGION")
-        aiplatform.init(project=self.project_name, location=self.region)
+        self.project_id = os.environ.get("PROJECT_ID")
+        self.region = os.environ.get("REGION")
+        aiplatform.init(project=self.project_id, location=self.region)
         self.ai_platform_client = aiplatform.gapic.PredictionServiceClient(
             client_options={
                 "api_endpoint": AI_PLATFORM_REGIONAL_ENDPOINT.format(
-                    region=self.region
+                    region=self.region,
                 ),
             },
         )
         logging.info(
             "ImagenClient: Prediction client initiated on project %s in %s: %s.",
-            self.project_name,
+            self.project_id,
             self.region,
             AI_PLATFORM_REGIONAL_ENDPOINT.format(region=self.region),
         )
@@ -103,7 +103,7 @@ class AIPlatformClient:
         }
         response = self.ai_platform_client.predict(
             endpoint=EDIT_ENDPOINT.format(
-                project_id=self.project_name,
+                project_id=self.project_id,
                 region=self.region,
             ),
             instances=instances,
@@ -112,7 +112,7 @@ class AIPlatformClient:
         logging.info(
             "ImagenClient: Got response %s from endpoint %s. Params: %s, Instances %s.",
             response,
-            EDIT_ENDPOINT.format(project_id=self.project_name, region=self.region),
+            EDIT_ENDPOINT.format(project_id=self.project_id, region=self.region),
             parameters,
             instances,
         )
@@ -127,7 +127,7 @@ class AIPlatformClient:
 
         response = self.ai_platform_client.predict(
             endpoint=SEGMENTATION_ENDPOINT.format(
-                project_id=self.project_name, region=self.region
+                project_id=self.project_id, region=self.region
             ),
             instances=instances,
             parameters={"mode": mode},

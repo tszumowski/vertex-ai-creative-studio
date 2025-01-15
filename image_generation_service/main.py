@@ -3,13 +3,13 @@
 import fastapi
 import google.cloud.logging
 from absl import logging
-
-from common import vertexai_client_lib
-from image_generation_service.models import (
+from models import (
     ImageGenerationRequest,
     ImageGenerationResponse,
 )
-from image_generation_service.worker import ImageGenerationServiceWorker
+from worker import ImageGenerationServiceWorker
+
+from common import vertexai_client_lib
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()
@@ -18,14 +18,16 @@ app = fastapi.FastAPI()
 
 
 @app.post("/generate_images")
-async def generate_images(request: ImageGenerationRequest) -> ImageGenerationResponse:
+def generate_images(request: ImageGenerationRequest) -> ImageGenerationResponse:
     try:
         kwargs = request.dict()
-        worker = ImageGenerationServiceWorker()
-        return worker.execute(**kwargs)
+        worker = ImageGenerationServiceWorker(settings=None)
+        image_uris = worker.execute(**kwargs)
+        return {"image_uris": image_uris}
     except vertexai_client_lib.VertexAIClientError as err:
         logging.error(
-            "ImageGenerationService: An error occured trying to generate images %s", err
+            "ImageGenerationService: An error occured trying to generate images %s",
+            err,
         )
         raise fastapi.HTTPException(
             status_code=500,

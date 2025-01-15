@@ -17,10 +17,10 @@ class VertexAIClientTest(unittest.TestCase):
         """Sets up the test environment."""
         super().setUp()
         self.enterContext(
-            mock.patch.dict(os.environ, {"GCP_PROJECT_ID": "test-project"}),
+            mock.patch.dict(os.environ, {"PROJECT_ID": "test-project"}),
         )
         self.enterContext(
-            mock.patch.dict(os.environ, {"GCP_REGION": "test-region"}),
+            mock.patch.dict(os.environ, {"REGION": "test-region"}),
         )
         self.enterContext(
             mock.patch.dict(os.environ, {"IMAGE_CREATION_BUCKET": "test-bucket"}),

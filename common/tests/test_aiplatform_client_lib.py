@@ -16,10 +16,10 @@ class AIPlatformClientTest(unittest.TestCase):
         """Sets up the test environment."""
         super().setUp()
         self.enterContext(
-            mock.patch.dict(os.environ, {"GCP_PROJECT_NAME": "test-project"}),
+            mock.patch.dict(os.environ, {"PROJECT_ID": "test-project"}),
         )
         self.enterContext(
-            mock.patch.dict(os.environ, {"GCP_REGION": "test-region"}),
+            mock.patch.dict(os.environ, {"REGION": "test-region"}),
         )
         self.enterContext(
             mock.patch.dict(os.environ, {"IMAGE_CREATION_BUCKET": "test-bucket"}),
@@ -28,10 +28,10 @@ class AIPlatformClientTest(unittest.TestCase):
         self.enterContext(mock.patch.object(aiplatform, "init", autospec=True))
 
         self.mock_storage_client = self.enterClassContext(
-            mock.patch.object(storage_client_lib, "StorageClient")
+            mock.patch.object(storage_client_lib, "StorageClient"),
         )
         self.mock_vertexai_client = self.enterClassContext(
-            mock.patch.object(vertexai_client_lib, "VertexAIClient")
+            mock.patch.object(vertexai_client_lib, "VertexAIClient"),
         )
         self.mock_vertexai_client.return_value.generate_description_from_image.return_value = "Fake description"  # noqa: E501
         self.mock_ai_platform_client = self.enterClassContext(

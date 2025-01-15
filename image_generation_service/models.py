@@ -16,4 +16,4 @@ class ImageGenerationRequest(BaseModel):
 
 
 class ImageGenerationResponse(BaseModel):
-    images: list[str]
+    image_uris: list[str]

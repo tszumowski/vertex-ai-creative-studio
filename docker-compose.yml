@@ -2,16 +2,23 @@ version: "3.3"
 
 services:
   image_generation_service:
-    image: 'gcr.io/$PROJECT_ID/image-generation-service'
+    image: 'gcr.io/$PROJECT_ID/creative-studio/image-generation-service:latest'
     build:
       context: .
       dockerfile: ./image_generation_service/Dockerfile
     ports:
-      - "8000:8000"
+      - "8000:8080"
   api_gateway:
-    image: 'gcr.io/$PROJECT_ID/api-gateway'
+    image: 'gcr.io/$PROJECT_ID/creative-studio/api-gateway:latest'
     build:
       context: .
       dockerfile: ./api_gateway/Dockerfile 
     ports:
-      - "8001:8000"
+      - "8001:8080"
+  app:
+    image: 'gcr.io/$PROJECT_ID/creative-studio/app:latest'
+    build:
+      context: ./app
+      dockerfile: Dockerfile 
+    ports:
+      - "8080:8080"

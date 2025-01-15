@@ -73,9 +73,9 @@ class VertexAIClient:
         self,
     ) -> None:
         """Instantiates the VertexAIClient."""
-        self.project_name = os.environ.get("GCP_PROJECT_NAME")
-        self.region = os.environ.get("GCP_REGION")
-        vertexai.init(project=self.project_name, location=self.region)
+        self.project_id = os.environ.get("PROJECT_ID")
+        self.region = os.environ.get("REGION")
+        vertexai.init(project=self.project_id, location=self.region)
 
         self.storage_client = storage_client_lib.StorageClient()
         self.bucket_name = os.environ.get("IMAGE_CREATION_BUCKET")
@@ -110,13 +110,13 @@ class VertexAIClient:
         """Gets the file type from the file extension.
 
         Args:
-        file_extension: The file extension.
+            file_extension: The file extension.
 
         Returns:
-        The file type.
+            The file type.
 
         Raises:
-        ValueError: If the file extension is not supported.
+            ValueError: If the file extension is not supported.
         """
         if file_extension in SUPPORTED_IMAGE_TYPES:
             return "image"
@@ -126,7 +126,7 @@ class VertexAIClient:
 
     def generate_images(
         self,
-        image_generation_model: str,
+        model: str,
         prompt: str,
         add_watermark: bool,
         aspect_ratio: str,
@@ -137,7 +137,7 @@ class VertexAIClient:
         """Generates a set of images.
 
         Args:
-            image_generation_model: The model to use.
+            model: The model to use.
             prompt: The prompt.
             add_watermark: Whether to add a watermark or not.
             aspect_ratio: The aspect ratio of the images.
@@ -152,7 +152,7 @@ class VertexAIClient:
             ImageClientError: When the images could not be generated.
         """
         image_generation_model = ImageGenerationModel.from_pretrained(
-            image_generation_model,
+            model,
         )
         try:
             generated_images_uris = []

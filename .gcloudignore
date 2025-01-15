@@ -1,12 +1,15 @@
 # Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
 
 # pyenv
 __pypackages__/
 .python-version
 
+# pytests
+**/test_*.py
+**/tests/
 
 # Distribution / packaging
 .Python
@@ -24,9 +27,9 @@ var/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/
-*.egg-info/
+**/*.egg-info/
 .installed.cfg
-*.egg
+**/*.egg
 MANIFEST
 
 # Installer logs
@@ -42,8 +45,8 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
-*.cover
-*.py,cover
+**/*.cover
+**/*.py,cover
 .hypothesis/
 .pytest_cache
 
@@ -51,13 +54,17 @@ coverage.xml
 .env
 .venv
 env/
-venv/
+venv
+**/venv/
 ENV/
 env.bak/
 venv.bak/
 
 # Other
 notebooks
-*.tf
-test_*.py
+**/*.tf
 terraform
+LICENSE
+README.md
+ruff.toml
+**/.git/
