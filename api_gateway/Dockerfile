@@ -2,6 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /api_gateway
 
+# Copy the common directory 
+COPY ./common ./common 
+
+# Install the common dependencies
+RUN pip install --no-cache-dir -r ./common/requirements.txt
+
 # Copy the service's requirements file
 COPY ./api_gateway/requirements.txt .
 

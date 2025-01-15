@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 
-import aiohttp
-import google.auth.transport.requests
-import google.oauth2.id_token
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+import google.cloud.logging
+from absl import logging
+from fastapi import FastAPI, Request
+
+from common import api_utils
+
+logging_client = google.cloud.logging.Client()
+logging_client.setup_logging()
+logging.info("Logging client instantiated.")
 
 app = FastAPI()
 
@@ -21,69 +24,17 @@ _IMAGE_GENERATION_SERVICE_URL = (
 )
 
 
-def get_id_token(audience: str) -> str:
-    """Fetches an ID token for the specified audience."""
-    req = google.auth.transport.requests.Request()
-    return google.oauth2.id_token.fetch_id_token(req, audience)
-
-
-async def handle_exceptions(e: Exception) -> HTTPException:
-    """Handles exceptions that may occur during image generation."""
-    if isinstance(e, aiohttp.ClientResponseError):
-        raise HTTPException(
-            status_code=e.status,
-            detail=f"Image generation service error: {e.message}",
-        ) from e
-    if isinstance(e, aiohttp.ClientConnectionError):
-        raise HTTPException(
-            status_code=503,
-            detail=f"Could not connect to image generation service: {e}",
-        ) from e
-    if isinstance(e, aiohttp.ClientError):
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error communicating with image generation service: {e}",
-        ) from e
-    # Handle other unexpected exceptions
-    raise HTTPException(
-        status_code=500,
-        detail=f"An unexpected error occurred: {e}",
-    ) from e
-
-
-async def make_authenticated_request_with_handled_exception(
-    method: str,
-    url: str,
-    json_data: dict[str, Any] | None = None,
-) -> JSONResponse:
-    """
-    Makes an authenticated request to the specified URL with exception handling.
-    """
-    try:
-        id_token = get_id_token(_IMAGE_GENERATION_SERVICE_URL)
-        headers = {"Authorization": f"Bearer {id_token}"}
-        async with aiohttp.ClientSession() as session:
-            async with session.request(
-                method,
-                url,
-                json=json_data,
-                headers=headers,
-            ) as response:
-                response.raise_for_status()
-                return JSONResponse(
-                    content=await response.json(),
-                    status_code=response.status,
-                )
-    except Exception as e:
-        raise await handle_exceptions(e) from e
-
-
-@app.post("/image-generation/generate_images")
-async def generate_image_api(request: Request) -> JSONResponse:
+@app.post("/image_generation/generate_images")
+async def generate_images_gateway(request: Request) -> list[str]:
     """Exposes the image generation endpoint through the API Gateway."""
+    logging.info("API Gateway: Received request: %s", request)
     data = await request.json()
-    return await make_authenticated_request_with_handled_exception(
-        "POST",
-        f"{_IMAGE_GENERATION_SERVICE_URL}/generate_images",
-        data,
+    response = await api_utils.make_authenticated_request_with_handled_exception(
+        method="POST",
+        url=f"{_IMAGE_GENERATION_SERVICE_URL}/generate_images",
+        json_data=data,
+        service_url=_IMAGE_GENERATION_SERVICE_URL,
     )
+    logging.info("API Gateway: Received response: %s", await response.json())
+    data = await response.json()
+    return data.get("image_uris")

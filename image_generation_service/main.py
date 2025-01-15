@@ -9,7 +9,7 @@ from models import (
 )
 from worker import ImageGenerationServiceWorker
 
-from common import vertexai_client_lib
+from common.clients import vertexai_client_lib
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()

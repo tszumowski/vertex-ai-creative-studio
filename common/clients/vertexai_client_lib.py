@@ -12,7 +12,7 @@ from absl import logging
 from vertexai import generative_models
 from vertexai.preview.vision_models import ImageGenerationModel
 
-from common import storage_client_lib
+from common.clients import storage_client_lib
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 SEGMENTATION_ENDPOINT = (

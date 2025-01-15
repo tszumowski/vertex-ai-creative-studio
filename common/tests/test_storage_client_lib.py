@@ -7,7 +7,7 @@ from unittest import mock
 import google.auth
 from google.cloud import storage
 
-from common import storage_client_lib
+from common.clients import storage_client_lib
 
 _FAKE_BUCKET_NAME = "fake_bucket_name"
 

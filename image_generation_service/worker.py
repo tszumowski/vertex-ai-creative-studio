@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from common import base_worker, vertexai_client_lib
+from common import base_worker
+from common.clients import vertexai_client_lib
 
 
 class ImageGenerationServiceWorker(base_worker.BaseWorker):

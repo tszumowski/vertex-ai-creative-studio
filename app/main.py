@@ -1,7 +1,13 @@
+from absl import logging
+import google.cloud.logging
 import mesop as me
 from components.scaffold import page_scaffold
 from pages import generate_images
 from state.state import AppState
+
+logging_client = google.cloud.logging.Client()
+logging_client.setup_logging()
+logging.info("Logging client instantiated.")
 
 
 def on_load(event: me.LoadEvent) -> None:  # pylint: disable=unused-argument

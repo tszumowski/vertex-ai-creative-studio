@@ -4,10 +4,11 @@ import os
 import unittest
 from unittest import mock
 
+from common.clients import storage_client_lib
 import vertexai
 from vertexai.preview.vision_models import ImageGenerationModel
 from google.cloud import aiplatform
-from common import storage_client_lib, vertexai_client_lib
+from common.clients import vertexai_client_lib
 
 
 class VertexAIClientTest(unittest.TestCase):

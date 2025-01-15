@@ -6,14 +6,16 @@ import secrets
 from typing import TYPE_CHECKING, Any
 
 import mesop as me
+from absl import logging
 from components.header import header
 from config import config_lib
 from state.state import AppState
 
-from pages.common import api_utils, constants
+from common import api_utils
+from pages import constants
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
 
 config = config_lib.AppConfig()
 
@@ -420,7 +422,7 @@ def reload_welcome(event: me.ClickEvent) -> Generator[Any, Any, Any]:
     yield
 
 
-def generate_images(event: me.ClickEvent) -> Generator[Any, Any, Any]:
+async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]:
     """Creates images from Imagen and returns a list of gcs uris.
 
     Args:
@@ -448,12 +450,19 @@ def generate_images(event: me.ClickEvent) -> Generator[Any, Any, Any]:
         "aspect_ratio": state.aspect_ratio,
         "add_watermark": state.add_watermark,
     }
-    response = api_utils.make_secure_post_request(
-        endpoint="image-generation/generate_images",
-        json=payload,
+    logging.info("Making request with payload %s", payload)
+    response = await api_utils.make_authenticated_request_with_handled_exception(
+        method="POST",
+        url=f"{config.api_gateway_url}/image_generation/generate_images",
+        json_data=payload,
+        service_url=config.api_gateway_url,
     )
-    print(response.json())
-    state.image_uris = json.dumps(response.content)["images"]
+    try:
+        image_uris = await response.json()
+        logging.info(image_uris)
+        state.image_uris = image_uris
+    except Exception as e:
+        logging.exception("Something went wrong generating images: %s", e)
     state.is_loading = False
     yield
 

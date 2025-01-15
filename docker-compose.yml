@@ -7,18 +7,18 @@ services:
       context: .
       dockerfile: ./image_generation_service/Dockerfile
     ports:
-      - "8000:8080"
+      - "8000:8000"
   api_gateway:
     image: 'gcr.io/$PROJECT_ID/creative-studio/api-gateway:latest'
     build:
       context: .
       dockerfile: ./api_gateway/Dockerfile 
     ports:
-      - "8001:8080"
+      - "8001:8000"
   app:
     image: 'gcr.io/$PROJECT_ID/creative-studio/app:latest'
     build:
-      context: ./app
-      dockerfile: Dockerfile 
+      context: .
+      dockerfile: ./app/Dockerfile 
     ports:
       - "8080:8080"

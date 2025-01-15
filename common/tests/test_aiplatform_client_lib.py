@@ -6,7 +6,8 @@ from unittest import mock
 
 from google.cloud import aiplatform
 
-from common import aiplatform_client_lib, storage_client_lib, vertexai_client_lib
+from common.clients import vertexai_client_lib
+from common.clients import aiplatform_client_lib, storage_client_lib
 
 
 class AIPlatformClientTest(unittest.TestCase):

@@ -6,7 +6,8 @@ from typing import Any
 from absl import logging
 from google.cloud import aiplatform
 
-from common import storage_client_lib, vertexai_client_lib
+from common.clients import vertexai_client_lib
+from common.clients import storage_client_lib
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 SEGMENTATION_ENDPOINT = (
