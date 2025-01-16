@@ -1,0 +1,15 @@
+Metadata-Version: 2.2
+Name: common
+Version: 0.1.0
+Requires-Dist: absl-py==2.1.0
+Requires-Dist: google-auth==2.37.0
+Requires-Dist: google-api-core==2.24.0
+Requires-Dist: google-cloud-storage==2.19.0
+Requires-Dist: google-cloud-aiplatform==1.75.0
+Requires-Dist: pytest==8.3.4
+Requires-Dist: mimetype==0.1.5
+Requires-Dist: fastapi==0.115.6
+Requires-Dist: aiohttp==3.11.10
+Requires-Dist: google-auth==2.37.0
+Requires-Dist: requests==2.32.3
+Dynamic: requires-dist

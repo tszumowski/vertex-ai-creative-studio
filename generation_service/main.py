@@ -6,8 +6,10 @@ from absl import logging
 from models import (
     ImageGenerationRequest,
     ImageGenerationResponse,
+    TextGenerationRequest,
+    TextGenerationResponse,
 )
-from worker import ImageGenerationServiceWorker
+from worker import ImageGenerationServiceWorker, TextGenerationServiceWorker
 
 from common.clients import vertexai_client_lib
 
@@ -27,6 +29,24 @@ def generate_images(request: ImageGenerationRequest) -> ImageGenerationResponse:
     except vertexai_client_lib.VertexAIClientError as err:
         logging.error(
             "ImageGenerationService: An error occured trying to generate images %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", err),
+        ) from err
+
+
+@app.post("/generate_text")
+def generate_text(request: TextGenerationRequest) -> TextGenerationResponse:
+    try:
+        kwargs = request.dict()
+        worker = TextGenerationServiceWorker(settings=None)
+        prompt = worker.execute(**kwargs)
+        return {"text": prompt}
+    except vertexai_client_lib.VertexAIClientError as err:
+        logging.error(
+            "TextGenerationServiceWorker: An error occured trying to generate text %s",
             err,
         )
         raise fastapi.HTTPException(

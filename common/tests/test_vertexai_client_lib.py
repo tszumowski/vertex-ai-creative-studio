@@ -4,11 +4,11 @@ import os
 import unittest
 from unittest import mock
 
-from common.clients import storage_client_lib
 import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel
 from google.cloud import aiplatform
-from common.clients import vertexai_client_lib
+from vertexai.preview.vision_models import ImageGenerationModel
+
+from common.clients import storage_client_lib, vertexai_client_lib
 
 
 class VertexAIClientTest(unittest.TestCase):
@@ -46,7 +46,7 @@ class VertexAIClientTest(unittest.TestCase):
         imagen_client = vertexai_client_lib.VertexAIClient()
 
         generated_images_uris = imagen_client.generate_images(
-            image_generation_model="imagen-base",
+            model="imagen-base",
             prompt="test prompt",
             add_watermark=False,
             aspect_ratio="1:1",
@@ -69,7 +69,7 @@ class VertexAIClientTest(unittest.TestCase):
             "VertexAIClient: Could not generate images Test exception",
         ):
             imagen_client.generate_images(
-                image_generation_model="imagen-base",
+                model="imagen-base",
                 prompt="test prompt",
                 add_watermark=False,
                 aspect_ratio="1:1",

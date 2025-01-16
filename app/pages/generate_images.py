@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import json
 import secrets
 from typing import TYPE_CHECKING, Any
 
@@ -171,12 +170,11 @@ def content(app_state: me.state) -> None:
                                 "Random",
                                 color="primary",
                                 type="stroked",
-                                on_click=get_random_prompt,
-                                style=me.Style(color="#1A73E8"),
+                                on_click=onclick_generate_random_prompt,
                             )
                             # prompt rewriter
                             with me.content_button(
-                                on_click=print,
+                                on_click=on_click_rewrite_prompt,
                                 type="stroked",
                             ):
                                 with me.tooltip(message="rewrite prompt with Gemini"):
@@ -422,6 +420,55 @@ def reload_welcome(event: me.ClickEvent) -> Generator[Any, Any, Any]:
     yield
 
 
+async def on_click_rewrite_prompt(
+    event: me.ClickEvent,
+) -> None:
+    del event  # Unused.
+    state = me.state(PageState)
+    if state.prompt_input:
+        payload = {
+            "prompt": constants.REWRITER_PROMPT.format(prompt=state.prompt_input),
+        }
+        logging.info("Making request with payload %s", payload)
+        response = await api_utils.make_authenticated_request_with_handled_exception(
+            method="POST",
+            url=f"{config.api_gateway_url}/generation/generate_text",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
+        try:
+            rewritten_prompt = await response.json()
+            state.prompt_input = rewritten_prompt
+            state.prompt_placeholder = rewritten_prompt
+        except Exception as e:
+            logging.exception("Something went wrong generating text: %s", e)
+
+
+async def on_change_generate_critique(
+    event: me.ClickEvent,
+) -> None:
+    del event  # Unused.
+    state = me.state(PageState)
+    if state.prompt_input:
+        payload = {
+            "prompt": constants.CRITIC_PROMPT.format(prompt=state.prompt_input),
+            "media_uris": state.image_uris,
+        }
+        logging.info("Making request with payload %s", payload)
+        response = await api_utils.make_authenticated_request_with_handled_exception(
+            method="POST",
+            url=f"{config.api_gateway_url}/generation/generate_text",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
+        try:
+            rewritten_prompt = await response.json()
+            state.prompt_input = rewritten_prompt
+            state.prompt_placeholder = rewritten_prompt
+        except Exception as e:
+            logging.exception("Something went wrong generating text: %s", e)
+
+
 async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]:
     """Creates images from Imagen and returns a list of gcs uris.
 
@@ -453,7 +500,7 @@ async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]
     logging.info("Making request with payload %s", payload)
     response = await api_utils.make_authenticated_request_with_handled_exception(
         method="POST",
-        url=f"{config.api_gateway_url}/image_generation/generate_images",
+        url=f"{config.api_gateway_url}/generation/generate_images",
         json_data=payload,
         service_url=config.api_gateway_url,
     )
@@ -470,17 +517,14 @@ async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]
 def on_image_input(event: me.InputEvent) -> None:
     """Image Input Event"""
     state = me.state(PageState)
-    state.image_prompt_input = event.value
+    state.prompt_input = event.value
 
 
-def get_random_prompt(event: me.ClickEvent) -> Generator[Any, Any, Any]:
+def onclick_generate_random_prompt(event: me.ClickEvent) -> Generator[Any, Any, Any]:
     """Gets a random image generation prompt."""
     del event
     state = me.state(PageState)
-    # with open("imagen_prompts.json") as file:
-    #    data = file.read()
-    # prompts = json.loads(data)
-    prompt = secrets.choice(["Test1", "Test2"])
+    prompt = secrets.choice(constants.RANDOM_PROMPTS)
     state.prompt_placeholder = prompt
     on_image_input(me.InputEvent(key=str(state.textarea_key), value=prompt))
     yield

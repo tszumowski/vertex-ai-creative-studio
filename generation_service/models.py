@@ -17,3 +17,12 @@ class ImageGenerationRequest(BaseModel):
 
 class ImageGenerationResponse(BaseModel):
     image_uris: list[str]
+
+
+class TextGenerationRequest(BaseModel):
+    prompt: str
+    media_uris: list[str] | None = None
+
+
+class TextGenerationResponse(BaseModel):
+    text: str

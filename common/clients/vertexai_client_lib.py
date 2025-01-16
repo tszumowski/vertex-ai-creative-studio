@@ -9,7 +9,14 @@ from typing import cast
 
 import vertexai
 from absl import logging
-from vertexai import generative_models
+from vertexai.generative_models import (
+    GenerationConfig,
+    GenerationResponse,
+    GenerativeModel,
+    HarmBlockThreshold,
+    HarmCategory,
+    Part,
+)
 from vertexai.preview.vision_models import ImageGenerationModel
 
 from common.clients import storage_client_lib
@@ -25,15 +32,6 @@ EDIT_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGEN_EDIT_MODEL}"
 )
-_GENERATIVE_MODEL = "gemini-1.5-flash-001"
-
-_GENERATION_CONFIG = generative_models.GenerationConfig(
-    temperature=0.8,
-    top_p=0.95,
-    top_k=20,
-    candidate_count=1,
-    stop_sequences=["STOP!"],
-)
 SUPPORTED_IMAGE_TYPES = frozenset(["jpeg", "jpg", "png"])
 SUPPORTED_VIDEO_TYPES = frozenset(
     [
@@ -46,8 +44,22 @@ SUPPORTED_VIDEO_TYPES = frozenset(
         "webm",
         "wmv",
         "3gpp",
-    ]
+    ],
 )
+_GENERATIVE_MODEL = "gemini-1.5-flash-001"
+_GENERATION_CONFIG = GenerationConfig(
+    temperature=0.8,
+    top_p=0.95,
+    top_k=20,
+    candidate_count=1,
+    stop_sequences=["STOP!"],
+)
+_SAFETY_SETTINGS = {
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -80,7 +92,7 @@ class VertexAIClient:
         self.storage_client = storage_client_lib.StorageClient()
         self.bucket_name = os.environ.get("IMAGE_CREATION_BUCKET")
         self.bucket_uri = f"gs://{self.bucket_name}"
-        self._text_generation_client = generative_models.GenerativeModel(
+        self._text_generation_client = GenerativeModel(
             model_name=_GENERATIVE_MODEL,
         )
         logging.info("VertexAIClient: Instantiated.")
@@ -97,13 +109,14 @@ class VertexAIClient:
         file_extension = os.path.splitext(media_uri)[1].replace(".", "")
         file_type = self._get_file_type_from_extension(file_extension)
         mime_type = mimetypes.guess_type(media_uri)[0]
-        media_content = generative_models.Part.from_uri(media_uri, mime_type)
+        media_content = Part.from_uri(media_uri, mime_type)
         response = self._text_generation_client.generate_content(
             contents=[media_content, getattr(Prompt, file_type.upper())],
             stream=False,
             generation_config=_GENERATION_CONFIG,
+            safety_settings=_SAFETY_SETTINGS,
         )
-        generation_response = cast(generative_models.GenerationResponse, response)
+        generation_response = cast(GenerationResponse, response)
         return generation_response.text.strip()
 
     def _get_file_type_from_extension(self, file_extension: str) -> str:
@@ -180,3 +193,20 @@ class VertexAIClient:
                 f"VertexAIClient: Could not generate images {ex}",
             ) from ex
         return generated_images_uris
+
+    def generate_text(self, prompt: str, media_uris: list[str] | None = None) -> str:
+        contents = []
+        if media_uris:
+            for media_uri in media_uris:
+                mime_type = mimetypes.guess_type(media_uri)[0]
+                media_content = Part.from_uri(media_uri, mime_type)
+                contents.append(media_content)
+        contents.append(prompt)
+        response = self._text_generation_client.generate_content(
+            contents=contents,
+            stream=False,
+            generation_config=_GENERATION_CONFIG,
+            safety_settings=_SAFETY_SETTINGS,
+        )
+        generation_response = cast(GenerationResponse, response)
+        return generation_response.text.strip()

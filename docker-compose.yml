@@ -1,11 +1,11 @@
 version: "3.3"
 
 services:
-  image_generation_service:
-    image: 'gcr.io/$PROJECT_ID/creative-studio/image-generation-service:latest'
+  generation_service:
+    image: 'gcr.io/$PROJECT_ID/creative-studio/generation-service:latest'
     build:
       context: .
-      dockerfile: ./image_generation_service/Dockerfile
+      dockerfile: ./generation_service/Dockerfile
     ports:
       - "8000:8000"
   api_gateway:

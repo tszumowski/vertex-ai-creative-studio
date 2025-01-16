@@ -9,13 +9,13 @@ COPY ./common ./common
 RUN pip install --no-cache-dir -r ./common/requirements.txt
 
 # Copy the service's requirements file
-COPY ./image_generation_service/requirements.txt .
+COPY ./generation_service/requirements.txt .
 
 # Install the service-specific dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the service's code 
-COPY ./image_generation_service . 
+COPY ./generation_service . 
 
 # Expose the service's port
 EXPOSE 8080
