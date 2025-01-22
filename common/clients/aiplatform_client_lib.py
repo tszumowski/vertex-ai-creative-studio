@@ -123,6 +123,7 @@ class AIPlatformClient:
                 instances,
             )
         except Exception as ex:
+            logging.exception(ex)
             raise AIPlatformClientError(
                 f"AIPlatformClient: Could not generate images {ex}",
             ) from ex

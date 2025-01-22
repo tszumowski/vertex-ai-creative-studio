@@ -49,21 +49,6 @@ class StorageClientTest(unittest.TestCase):
             "fake_mime_type",
             "fake_file_name",
             "",
-            True,
-        )
-        self.mock_blob.upload_from_string.assert_called_once_with(
-            b"}\xa9\x1eo+^",
-            "fake_mime_type",
-        )
-
-    def test_upload_not_decode(self) -> None:
-        storage_client_lib.StorageClient().upload(
-            _FAKE_BUCKET_NAME,
-            b"}\xa9\x1eo+^",
-            "fake_mime_type",
-            "fake_file_name",
-            "",
-            False,
         )
         self.mock_blob.upload_from_string.assert_called_once_with(
             b"}\xa9\x1eo+^",
@@ -76,6 +61,4 @@ class StorageClientTest(unittest.TestCase):
             _FAKE_BUCKET_NAME,
             "fake_file_path",
         )
-        self.mock_blob.download_as_bytes.assert_has_calls([
-            mock.call()
-        ])
+        self.mock_blob.download_as_bytes.assert_has_calls([mock.call()])
