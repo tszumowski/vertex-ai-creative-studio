@@ -1,12 +1,14 @@
 """Dialog mesop component"""
 
+from __future__ import annotations
+
 from typing import Callable
 
 import mesop as me
 
 
 @me.content_component
-def dialog(*, is_open: bool, on_click_background: Callable | None = None):  # pylint: disable=not-context-manager
+def dialog(*, is_open: bool, on_click_background: Callable | None = None) -> None:  # pylint: disable=not-context-manager
     """renders a dialog component"""
     with me.box(
         style=me.Style(

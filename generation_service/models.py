@@ -26,3 +26,16 @@ class TextGenerationRequest(BaseModel):
 
 class TextGenerationResponse(BaseModel):
     text: str
+
+
+class EditImageRequest(BaseModel):
+    image_uri: str
+    prompt: str
+    aspect_ratio: str = "1:1"
+    number_of_images: int = 1
+    edit_mode: str = ""
+    foreground_background: str = "foreground"
+
+
+class EditImageResponse(BaseModel):
+    edited_image_uri: str

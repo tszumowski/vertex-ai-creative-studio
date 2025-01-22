@@ -8,7 +8,7 @@ from state.state import AppState
 
 
 @me.content_component
-def page_scaffold():
+def page_scaffold() -> None:
     """page scaffold component"""
 
     app_state = me.state(AppState)
@@ -37,7 +37,7 @@ def page_scaffold():
 
 
 @me.content_component
-def page_frame():
+def page_frame() -> None:
     """Page Frame"""
     with me.box(style=MAIN_COLUMN_STYLE):
         with me.box(style=PAGE_BACKGROUND_STYLE):

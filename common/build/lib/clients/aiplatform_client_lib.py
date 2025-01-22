@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import base64
 import os
 from typing import Any
 
 from absl import logging
 from google.cloud import aiplatform
 
-from common.clients import storage_client_lib, vertexai_client_lib
+from common.clients import vertexai_client_lib
+from common.clients import storage_client_lib
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 SEGMENTATION_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGE_SEGMENTATION_MODEL}"
 )
-AIPLATFORM_REGIONAL_ENDPOINT = "{region}-aiplatform.googleapis.com"
-IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
+AI_PLATFORM_REGIONAL_ENDPOINT = "{region}-aiplatform.googleapis.com"
+IMAGEN_EDIT_MODEL = "imagen-3.0-capability-preview-0930"
 EDIT_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGEN_EDIT_MODEL}"
@@ -34,9 +34,9 @@ class AIPlatformClient:
         self.project_id = os.environ.get("PROJECT_ID")
         self.region = os.environ.get("REGION")
         aiplatform.init(project=self.project_id, location=self.region)
-        self.aiplatform_client = aiplatform.gapic.PredictionServiceClient(
+        self.ai_platform_client = aiplatform.gapic.PredictionServiceClient(
             client_options={
-                "api_endpoint": AIPLATFORM_REGIONAL_ENDPOINT.format(
+                "api_endpoint": AI_PLATFORM_REGIONAL_ENDPOINT.format(
                     region=self.region,
                 ),
             },
@@ -45,7 +45,7 @@ class AIPlatformClient:
             "ImagenClient: Prediction client initiated on project %s in %s: %s.",
             self.project_id,
             self.region,
-            AIPLATFORM_REGIONAL_ENDPOINT.format(region=self.region),
+            AI_PLATFORM_REGIONAL_ENDPOINT.format(region=self.region),
         )
         self.storage_client = storage_client_lib.StorageClient()
         self.vertexai_client = vertexai_client_lib.VertexAIClient()
@@ -78,9 +78,8 @@ class AIPlatformClient:
             file_path = "/".join(image_uri_parts[3:])
             image_string = self.storage_client.download_as_string(
                 bucket_name=bucket_name,
-                file_path=file_path,
+                file_name=file_path,
             )
-            image_bytes = base64.b64decode(image_string)
 
             file, extension = file_path.split(".")
             edited_file_uri = f"gs://{bucket_name}/{file}-edited.{extension}"
@@ -91,13 +90,14 @@ class AIPlatformClient:
 
             gcs_output = self.storage_client.upload(
                 bucket_name=bucket_name,
-                contents=base64.b64encode(mask["bytesBase64Encoded"]).decode("utf-8"),
+                contents=mask["bytesBase64Encoded"],
                 mime_type=mask["mimeType"],
                 file_name=mask_file_path,
+                decode=True,
             )
             logging.info("ImagenClient: Wrote mask to %s", gcs_output)
             instances = self._build_edit_prediction_instances(
-                image_bytes,
+                image_string,
                 mask_bytes,
                 prompt,
             )
@@ -107,7 +107,7 @@ class AIPlatformClient:
                 "aspectRatio": aspect_ratio,
                 "output_gcs_uri": edited_file_uri,
             }
-            response = self.aiplatform_client.predict(
+            response = self.ai_platform_client.predict(
                 endpoint=EDIT_ENDPOINT.format(
                     project_id=self.project_id,
                     region=self.region,
@@ -135,10 +135,9 @@ class AIPlatformClient:
         instances.append({"image": {"gcsUri": image_uri}})
         instances[0]["prompt"] = description
 
-        response = self.aiplatform_client.predict(
+        response = self.ai_platform_client.predict(
             endpoint=SEGMENTATION_ENDPOINT.format(
-                project_id=self.project_id,
-                region=self.region,
+                project_id=self.project_id, region=self.region
             ),
             instances=instances,
             parameters={"mode": mode},
@@ -157,7 +156,7 @@ class AIPlatformClient:
 
     def _build_edit_prediction_instances(
         self,
-        image_bytes: bytes,
+        image_string: str,
         mask_bytes: str | bytes,
         prompt: str,
     ) -> list[dict[str, Any]]:
@@ -166,7 +165,7 @@ class AIPlatformClient:
             {
                 "referenceType": "REFERENCE_TYPE_RAW",
                 "referenceId": 1,
-                "referenceImage": {"bytesBase64Encoded": image_bytes},
+                "referenceImage": {"bytesBase64Encoded": image_string},
             },
         )
         reference_images.append(

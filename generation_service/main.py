@@ -4,14 +4,20 @@ import fastapi
 import google.cloud.logging
 from absl import logging
 from models import (
+    EditImageRequest,
+    EditImageResponse,
     ImageGenerationRequest,
     ImageGenerationResponse,
     TextGenerationRequest,
     TextGenerationResponse,
 )
-from worker import ImageGenerationServiceWorker, TextGenerationServiceWorker
+from worker import (
+    ImageEditingServiceWorker,
+    ImageGenerationServiceWorker,
+    TextGenerationServiceWorker,
+)
 
-from common.clients import vertexai_client_lib
+from common.clients import aiplatform_client_lib, vertexai_client_lib
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()
@@ -51,5 +57,23 @@ def generate_text(request: TextGenerationRequest) -> TextGenerationResponse:
         )
         raise fastapi.HTTPException(
             status_code=500,
-            detail=("The server could not process the request: %s", err),
+            detail=("The server could not process the request: %s", str(err)),
+        ) from err
+
+
+@app.post("/edit_image")
+def edit_image(request: EditImageRequest) -> EditImageResponse:
+    try:
+        kwargs = request.dict()
+        worker = ImageEditingServiceWorker(settings=None)
+        edited_image_uri = worker.execute(**kwargs)
+        return {"edited_image_uri": edited_image_uri}
+    except aiplatform_client_lib.AIPlatformClientError as err:
+        logging.error(
+            "ImageEditingServiceWorker: An error occured trying to edit image: %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", str(err)),
         ) from err

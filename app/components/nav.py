@@ -1,17 +1,15 @@
 import mesop as me
-
-from state.state import AppState
 from components.styles import (
+    DEFAULT_MENU_STYLE,
+    FANCY_TEXT_GRADIENT,
     SIDENAV_MAX_WIDTH,
     SIDENAV_MIN_WIDTH,
-    FANCY_TEXT_GRADIENT,
-    DEFAULT_MENU_STYLE,
 )
-
+from state.state import AppState
 
 page_json = [
     {"id": 0, "display": "Generate", "icon": "stadium", "route": "/"},
-    {"id": 1, "display": "Edit", "icon": "leaderboard", "route": "/leaderboard"},
+    {"id": 1, "display": "Edit", "icon": "leaderboard", "route": "/edit"},
     {"id": 2, "display": "History", "icon": "history", "route": "/history"},
     {
         "id": 10,

@@ -16,18 +16,17 @@ ENV LC_ALL en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 
-# Add app code here
-COPY ./app/. /srv/mesop-app
-COPY ./common/. /srv/common
-WORKDIR /srv/mesop-app
-
 # Install dependencies
-#COPY ./app/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create non-root user
 RUN groupadd -g 900 mesop && useradd -u 900 -s /bin/bash -g mesop mesop
 USER mesop
+
+# Add app code here
+COPY . /srv/mesop-app
+WORKDIR /srv/mesop-app
 
 # Run Mesop through gunicorn. Should be available at localhost:8080
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:me"]

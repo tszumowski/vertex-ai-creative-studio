@@ -8,10 +8,10 @@ import mesop as me
 from absl import logging
 from components.header import header
 from config import config_lib
-from state.state import AppState
-
-from common import api_utils
+from icons.svg_icon_component import svg_icon_component
 from pages import constants
+from state.state import AppState
+from utils import auth_request
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -32,7 +32,7 @@ _BOX_STYLE = me.Style(
 
 
 @me.stateclass
-class PageState:
+class GenerateImagesPageState:
     """Local Page State"""
 
     show_advanced: bool = False
@@ -63,11 +63,13 @@ class PageState:
     lighting: str = "Golden hour"
     composition: str = "Wide angle"
 
+    commentary: str = ""
+
 
 def content(app_state: me.state) -> None:
     """Generate Images Page"""
 
-    page_state = me.state(PageState)
+    page_state = me.state(GenerateImagesPageState)
     with me.box(
         style=me.Style(
             display="flex",
@@ -121,7 +123,7 @@ def content(app_state: me.state) -> None:
                             label="Imagen version",
                             options=constants.IMAGE_MODEL_OPTIONS,
                             key="model",
-                            on_selection_change=modify_state,
+                            on_selection_change=on_event_modify_state,
                             value=config.default_image_model,
                         )
                     # Prompt
@@ -170,7 +172,7 @@ def content(app_state: me.state) -> None:
                                 "Random",
                                 color="primary",
                                 type="stroked",
-                                on_click=onclick_generate_random_prompt,
+                                on_click=on_click_generate_random_prompt,
                             )
                             # prompt rewriter
                             with me.content_button(
@@ -192,7 +194,7 @@ def content(app_state: me.state) -> None:
                                 "Generate",
                                 color="primary",
                                 type="flat",
-                                on_click=generate_images,
+                                on_click=on_click_generate_images,
                             )
 
                     # Modifiers
@@ -225,7 +227,7 @@ def content(app_state: me.state) -> None:
                                 label="Aspect Ratio",
                                 options=constants.ASPECT_RATIO_OPTIONS,
                                 key="aspect_ratio",
-                                on_selection_change=modify_state,
+                                on_selection_change=on_event_modify_state,
                                 style=me.Style(width="160px"),
                                 value=page_state.aspect_ratio,
                             )
@@ -233,7 +235,7 @@ def content(app_state: me.state) -> None:
                                 label="Content Type",
                                 options=constants.CONTENT_TYPE_OPTIONS,
                                 key="content_type",
-                                on_selection_change=modify_state,
+                                on_selection_change=on_event_modify_state,
                                 style=me.Style(width="160px"),
                                 value=page_state.content_type,
                             )
@@ -241,7 +243,7 @@ def content(app_state: me.state) -> None:
                                 label="Color & Tone",
                                 options=constants.COLOR_AND_TONE_OPTIONS,
                                 key="color_tone",
-                                on_selection_change=modify_state,
+                                on_selection_change=on_event_modify_state,
                                 style=me.Style(width="160px"),
                                 value=page_state.color_tone,
                             )
@@ -249,14 +251,14 @@ def content(app_state: me.state) -> None:
                                 label="Lighting",
                                 options=constants.LIGHTING_OPTIONS,
                                 key="lighting",
-                                on_selection_change=modify_state,
+                                on_selection_change=on_event_modify_state,
                                 value=page_state.lighting,
                             )
                             me.select(
                                 label="Composition",
                                 options=constants.COMPOSITION_OPTIONS,
                                 key="composition",
-                                on_selection_change=modify_state,
+                                on_selection_change=on_event_modify_state,
                                 value=page_state.composition,
                             )
                         # Advanced controls
@@ -272,7 +274,7 @@ def content(app_state: me.state) -> None:
                                 me.box(style=me.Style(width=67))
                                 me.input(
                                     label="negative phrases",
-                                    on_blur=modify_state,
+                                    on_blur=on_event_modify_state,
                                     value=page_state.negative_prompt_placeholder,
                                     key=str(page_state.negative_prompt_key),
                                     style=me.Style(
@@ -283,7 +285,7 @@ def content(app_state: me.state) -> None:
                                     label="number of images",
                                     value="3",
                                     options=constants.NUMBER_OF_IMAGES_OPTIONS,
-                                    on_selection_change=modify_state,
+                                    on_selection_change=on_event_modify_state,
                                     key="num_images",
                                     style=me.Style(width="155px"),
                                 )
@@ -308,7 +310,7 @@ def content(app_state: me.state) -> None:
                                     display="grid",
                                     justify_content="center",
                                     justify_items="center",
-                                )
+                                ),
                             ):
                                 me.progress_spinner()
                         if len(page_state.image_uris) != 0:
@@ -322,12 +324,10 @@ def content(app_state: me.state) -> None:
                                 # Generated images row
                                 with me.box(
                                     style=me.Style(
-                                        flex_wrap="wrap",
-                                        display="flex",
-                                        gap="15px",
+                                        flex_wrap="wrap", display="flex", gap="15px"
                                     ),
                                 ):
-                                    for img in page_state.image_uris:
+                                    for _, img in enumerate(page_state.image_uris):
                                         img_url = img.replace(
                                             "gs://",
                                             "https://storage.mtls.cloud.google.com/",
@@ -341,20 +341,24 @@ def content(app_state: me.state) -> None:
                                             ),
                                         )
                                 # SynthID notice
-                                with me.box(
+                            with me.box(
+                                style=me.Style(
+                                    display="flex",
+                                    flex_direction="row",
+                                    align_items="center",
+                                ),
+                            ):
+                                svg_icon_component(
+                                    svg="""<svg data-icon-name="digitalWatermarkIcon" viewBox="0 0 24 24" width="24" height="24" fill="none" aria-hidden="true" sandboxuid="2"><path fill="#3367D6" d="M12 22c-.117 0-.233-.008-.35-.025-.1-.033-.2-.075-.3-.125-2.467-1.267-4.308-2.833-5.525-4.7C4.608 15.267 4 12.983 4 10.3V6.2c0-.433.117-.825.35-1.175.25-.35.575-.592.975-.725l6-2.15a7.7 7.7 0 00.325-.1c.117-.033.233-.05.35-.05.15 0 .375.05.675.15l6 2.15c.4.133.717.375.95.725.25.333.375.717.375 1.15V10.3c0 2.683-.625 4.967-1.875 6.85-1.233 1.883-3.067 3.45-5.5 4.7-.1.05-.2.092-.3.125-.1.017-.208.025-.325.025zm0-2.075c2.017-1.1 3.517-2.417 4.5-3.95 1-1.55 1.5-3.442 1.5-5.675V6.175l-6-2.15-6 2.15V10.3c0 2.233.492 4.125 1.475 5.675 1 1.55 2.508 2.867 4.525 3.95z" sandboxuid="2"></path><path fill="#3367D6" d="M12 16.275c0-.68-.127-1.314-.383-1.901a4.815 4.815 0 00-1.059-1.557 4.813 4.813 0 00-1.557-1.06 4.716 4.716 0 00-1.9-.382c.68 0 1.313-.128 1.9-.383a4.916 4.916 0 002.616-2.616A4.776 4.776 0 0012 6.475c0 .672.128 1.306.383 1.901a5.07 5.07 0 001.046 1.57 5.07 5.07 0 001.57 1.046 4.776 4.776 0 001.901.383c-.672 0-1.306.128-1.901.383a4.916 4.916 0 00-2.616 2.616A4.716 4.716 0 0012 16.275z" sandboxuid="2"></path></svg>"""
+                                )
+
+                                me.text(
+                                    text="images watermarked by SynthID",
                                     style=me.Style(
-                                        display="flex",
-                                        flex_direction="row",
-                                        align_items="center",
+                                        padding=me.Padding.all(10),
+                                        font_size="0.95em",
                                     ),
-                                ):
-                                    me.text(
-                                        text="images watermarked by SynthID",
-                                        style=me.Style(
-                                            padding=me.Padding.all(10),
-                                            font_size="0.95em",
-                                        ),
-                                    )
+                                )
                         else:
                             if page_state.is_loading:
                                 me.text(
@@ -375,11 +379,42 @@ def content(app_state: me.state) -> None:
                                     ),
                                 )
 
+                    # Image commentary
+                    if len(page_state.image_uris) != 0:
+                        with me.box(style=_BOX_STYLE):
+                            with me.box(
+                                style=me.Style(
+                                    display="flex",
+                                    justify_content="space-between",
+                                    gap=2,
+                                    width="100%",
+                                )
+                            ):
+                                with me.box(
+                                    style=me.Style(
+                                        flex_wrap="wrap",
+                                        display="flex",
+                                        flex_direction="row",
+                                        # width="85%",
+                                        padding=me.Padding.all(10),
+                                    )
+                                ):
+                                    me.icon("assistant")
+                                    me.text(
+                                        "magazine editor",
+                                        style=me.Style(font_weight=500),
+                                    )
+                                    me.markdown(
+                                        text=page_state.commentary,
+                                        style=me.Style(padding=me.Padding.all(15)),
+                                    )
 
+
+# Event Handlers
 def on_click_clear_images(event: me.ClickEvent) -> None:
     """Click Event to clear images."""
     del event
-    state = me.state(PageState)
+    state = me.state(GenerateImagesPageState)
     state.prompt_input = ""
     state.prompt_placeholder = ""
     state.image_uris.clear()
@@ -388,28 +423,29 @@ def on_click_clear_images(event: me.ClickEvent) -> None:
     state.negative_prompt_key += 1
 
 
-# advanced controls
 def on_click_advanced_controls(event: me.ClickEvent) -> None:
     """Click Event to toggle advanced controls."""
     del event  # Unused.
-    me.state(PageState).show_advanced = not me.state(PageState).show_advanced
+    me.state(GenerateImagesPageState).show_advanced = not me.state(
+        GenerateImagesPageState,
+    ).show_advanced
 
 
-def modify_state(
+def on_event_modify_state(
     event: me.SelectSelectionChangeEvent | me.InputBlurEvent,
 ) -> None:
-    state = me.state(PageState)
+    state = me.state(GenerateImagesPageState)
     setattr(state, event.key, event.value)
 
 
 def on_blur_image_negative_prompt(event: me.InputBlurEvent) -> None:
     """Image Blur Event"""
-    me.state(PageState).negative_prompt_input = event.value
+    me.state(GenerateImagesPageState).negative_prompt_input = event.value
 
 
 def on_blur_image_prompt(event: me.InputBlurEvent) -> None:
     """Image Blur Event"""
-    me.state(PageState).prompt_input = event.value
+    me.state(GenerateImagesPageState).prompt_input = event.value
 
 
 def reload_welcome(event: me.ClickEvent) -> Generator[Any, Any, Any]:
@@ -424,13 +460,13 @@ async def on_click_rewrite_prompt(
     event: me.ClickEvent,
 ) -> None:
     del event  # Unused.
-    state = me.state(PageState)
+    state = me.state(GenerateImagesPageState)
     if state.prompt_input:
         payload = {
             "prompt": constants.REWRITER_PROMPT.format(prompt=state.prompt_input),
         }
         logging.info("Making request with payload %s", payload)
-        response = await api_utils.make_authenticated_request_with_handled_exception(
+        response = await auth_request.make_authenticated_request(
             method="POST",
             url=f"{config.api_gateway_url}/generation/generate_text",
             json_data=payload,
@@ -444,51 +480,7 @@ async def on_click_rewrite_prompt(
             logging.exception("Something went wrong generating text: %s", e)
 
 
-async def on_change_generate_critique(
-    event: me.ClickEvent,
-) -> None:
-    del event  # Unused.
-    state = me.state(PageState)
-    if state.prompt_input:
-        payload = {
-            "prompt": constants.CRITIC_PROMPT.format(prompt=state.prompt_input),
-            "media_uris": state.image_uris,
-        }
-        logging.info("Making request with payload %s", payload)
-        response = await api_utils.make_authenticated_request_with_handled_exception(
-            method="POST",
-            url=f"{config.api_gateway_url}/generation/generate_text",
-            json_data=payload,
-            service_url=config.api_gateway_url,
-        )
-        try:
-            rewritten_prompt = await response.json()
-            state.prompt_input = rewritten_prompt
-            state.prompt_placeholder = rewritten_prompt
-        except Exception as e:
-            logging.exception("Something went wrong generating text: %s", e)
-
-
-async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]:
-    """Creates images from Imagen and returns a list of gcs uris.
-
-    Args:
-        model: tbd.
-        prompt: tbd.
-        num_images: tbd.
-        negative_prompt: tbd.
-        aspect_ratio: tbd.
-        add_watermark: tbd.
-        language: tbd.
-
-    Returns:
-        A list of strings (gcs uris of image output)
-    """
-    del event  # Unused.
-    state = me.state(PageState)
-    state.is_loading = True
-    state.image_uris.clear()
-    yield
+async def send_image_generation_request(state: GenerateImagesPageState) -> list[str]:
     payload = {
         "model": state.model,
         "prompt": state.prompt_input,
@@ -498,7 +490,7 @@ async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]
         "add_watermark": state.add_watermark,
     }
     logging.info("Making request with payload %s", payload)
-    response = await api_utils.make_authenticated_request_with_handled_exception(
+    response = await auth_request.make_authenticated_request(
         method="POST",
         url=f"{config.api_gateway_url}/generation/generate_images",
         json_data=payload,
@@ -507,23 +499,58 @@ async def generate_images(event: me.ClickEvent) -> AsyncGenerator[Any, Any, Any]
     try:
         image_uris = await response.json()
         logging.info(image_uris)
-        state.image_uris = image_uris
+        return image_uris
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
+
+
+async def send_image_critic_request(state: GenerateImagesPageState) -> str:
+    payload = {
+        "prompt": constants.CRITIC_PROMPT.format(prompt=state.prompt_input),
+        "media_uris": state.image_uris,
+    }
+    logging.info("Making request with payload %s", payload)
+    response = await auth_request.make_authenticated_request(
+        method="POST",
+        url=f"{config.api_gateway_url}/generation/generate_text",
+        json_data=payload,
+        service_url=config.api_gateway_url,
+    )
+    try:
+        text = await response.json()
+        logging.info(text)
+        return text
+    except Exception as e:
+        logging.exception("Something went wrong generating images: %s", e)
+
+
+async def on_click_generate_images(
+    event: me.ClickEvent,
+) -> AsyncGenerator[Any, Any, Any]:
+    """Creates images from Imagen and returns a list of gcs uris."""
+    del event  # Unused.
+    state = me.state(GenerateImagesPageState)
+    state.is_loading = True
+    state.image_uris.clear()
+    yield
+    state.image_uris = await send_image_generation_request(state)
+    state.commentary = await send_image_critic_request(state)
     state.is_loading = False
+    logging.info(state)
+    logging.info(state.is_loading)
     yield
 
 
 def on_image_input(event: me.InputEvent) -> None:
     """Image Input Event"""
-    state = me.state(PageState)
+    state = me.state(GenerateImagesPageState)
     state.prompt_input = event.value
 
 
-def onclick_generate_random_prompt(event: me.ClickEvent) -> Generator[Any, Any, Any]:
+def on_click_generate_random_prompt(event: me.ClickEvent) -> Generator[Any, Any, Any]:
     """Gets a random image generation prompt."""
     del event
-    state = me.state(PageState)
+    state = me.state(GenerateImagesPageState)
     prompt = secrets.choice(constants.RANDOM_PROMPTS)
     state.prompt_placeholder = prompt
     on_image_input(me.InputEvent(key=str(state.textarea_key), value=prompt))
