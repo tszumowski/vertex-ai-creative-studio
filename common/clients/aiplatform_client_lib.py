@@ -76,11 +76,11 @@ class AIPlatformClient:
             image_uri_parts = image_uri.split("/")
             bucket_name = image_uri_parts[2]
             file_path = "/".join(image_uri_parts[3:])
-            image_string = self.storage_client.download_as_string(
+            # Download file as b64 (utf-8) encoded string.
+            image_bytes = self.storage_client.download_as_string(
                 bucket_name=bucket_name,
                 file_path=file_path,
             )
-            image_bytes = base64.b64decode(image_string)
 
             file, extension = file_path.split(".")
             edited_file_uri = f"gs://{bucket_name}/{file}-edited.{extension}"
@@ -91,7 +91,7 @@ class AIPlatformClient:
 
             gcs_output = self.storage_client.upload(
                 bucket_name=bucket_name,
-                contents=base64.b64encode(mask["bytesBase64Encoded"]).decode("utf-8"),
+                contents=mask["bytesBase64Encoded"],
                 mime_type=mask["mimeType"],
                 file_name=mask_file_path,
             )
@@ -173,7 +173,7 @@ class AIPlatformClient:
         reference_images.append(
             {
                 "referenceType": "REFERENCE_TYPE_MASK",
-                "referenceId": 1,
+                "referenceId": 2,
                 "referenceImage": {"bytesBase64Encoded": mask_bytes},
                 "maskImageConfig": {
                     "maskMode": "MASK_MODE_USER_PROVIDED",

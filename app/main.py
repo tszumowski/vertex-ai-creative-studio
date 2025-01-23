@@ -2,7 +2,7 @@ import google.cloud.logging
 import mesop as me
 from absl import logging
 from components.scaffold import page_scaffold
-from pages import edit_images, generate_images
+from pages import edit_images, generate_images, settings
 from state.state import AppState
 
 logging_client = google.cloud.logging.Client()
@@ -51,3 +51,19 @@ def edit_images_page() -> None:
     """Main Page"""
     with page_scaffold():  # pylint: disable=not-context-manager
         edit_images.content()
+
+
+@me.page(
+    path="/settings",
+    title="Settings",
+    on_load=on_load,
+    security_policy=me.SecurityPolicy(
+        dangerously_disable_trusted_types=True,
+        allowed_connect_srcs="https://apis.google.com",
+    ),
+)
+def settings_page() -> None:
+    """Main Page"""
+    app_state = me.state(AppState)
+    with page_scaffold():  # pylint: disable=not-context-manager
+        settings.content(app_state)
