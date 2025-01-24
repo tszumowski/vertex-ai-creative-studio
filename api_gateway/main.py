@@ -42,6 +42,22 @@ async def generate_images_gateway(request: Request) -> list[str]:
     return data.get("image_uris")
 
 
+@app.post("/generation/generate_video")
+async def generate_video_gateway(request: Request) -> list[str]:
+    """Exposes the video generation endpoint through the API Gateway."""
+    logging.info("API Gateway: Received request: %s", request)
+    data = await request.json()
+    response = await api_utils.make_authenticated_request_with_handled_exception(
+        method="POST",
+        url=f"{_GENERATION_SERVICE_URL}/generate_video",
+        json_data=data,
+        service_url=_GENERATION_SERVICE_URL,
+    )
+    logging.info("API Gateway: Received response: %s", await response.json())
+    data = await response.json()
+    return data.get("video_uri")
+
+
 @app.post("/generation/generate_text")
 async def generate_text(request: Request) -> str:
     """Exposes the image generation endpoint through the API Gateway."""

@@ -10,11 +10,14 @@ from models import (
     ImageGenerationResponse,
     TextGenerationRequest,
     TextGenerationResponse,
+    VideoGenerationRequest,
+    VideoGenerationResponse,
 )
 from worker import (
     ImageEditingServiceWorker,
     ImageGenerationServiceWorker,
     TextGenerationServiceWorker,
+    VideoGenerationServiceWorker,
 )
 
 from common.clients import aiplatform_client_lib, vertexai_client_lib
@@ -68,9 +71,27 @@ def edit_image(request: EditImageRequest) -> EditImageResponse:
         worker = ImageEditingServiceWorker(settings=None)
         edited_image_uri = worker.execute(**kwargs)
         return {"edited_image_uri": edited_image_uri}
-    except aiplatform_client_lib.AIPlatformClientError as err:
+    except vertexai_client_lib.VertexAIClientError as err:
         logging.error(
             "ImageEditingServiceWorker: An error occured trying to edit image: %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", str(err)),
+        ) from err
+
+
+@app.post("/generate_video")
+def generate_video(request: VideoGenerationRequest) -> VideoGenerationResponse:
+    try:
+        kwargs = request.dict()
+        worker = VideoGenerationServiceWorker(settings=None)
+        video_uri = worker.execute(**kwargs)
+        return {"video_uri": video_uri}
+    except aiplatform_client_lib.AIPlatformClientError as err:
+        logging.error(
+            "VideoGenerationServiceWorker: An error occured trying to generate video: %s",
             err,
         )
         raise fastapi.HTTPException(

@@ -31,11 +31,21 @@ class TextGenerationResponse(BaseModel):
 class EditImageRequest(BaseModel):
     image_uri: str
     prompt: str
-    aspect_ratio: str = "1:1"
     number_of_images: int = 1
     edit_mode: str = ""
-    foreground_background: str = "foreground"
+    mask_mode: str = "foreground"
+    segmentation_classes: list[str] = []
 
 
 class EditImageResponse(BaseModel):
     edited_image_uri: str
+
+
+class VideoGenerationRequest(BaseModel):
+    prompt: str
+    image_uri: str
+    aspect_ratio: str = "16:9"
+
+
+class VideoGenerationResponse(BaseModel):
+    video_uri: str

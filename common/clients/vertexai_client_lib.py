@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 import dataclasses
 import mimetypes
 import os
@@ -17,17 +18,23 @@ from vertexai.generative_models import (
     HarmCategory,
     Part,
 )
-from vertexai.preview.vision_models import ImageGenerationModel
-
+from vertexai.preview.vision_models import (
+    ControlReferenceImage,
+    Image,
+    ImageGenerationModel,
+    MaskReferenceImage,
+    RawReferenceImage,
+)
+from common.segmentation_utils import SemanticType
 from common.clients import storage_client_lib
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
+IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
 SEGMENTATION_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGE_SEGMENTATION_MODEL}"
 )
 AI_PLATFORM_REGIONAL_ENDPOINT = "{region}-aiplatform.googleapis.com"
-IMAGEN_EDIT_MODEL = "imagen-3.0-capability-preview-0930"
 EDIT_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGEN_EDIT_MODEL}"
@@ -60,6 +67,14 @@ _SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }
+
+
+class EditMode(enum.Enum):
+    EDIT_MODE_INPAINT_INSERTION = "inpainting-insert"
+    EDIT_MODE_OUTPAINT = "outpainting"
+    EDIT_MODE_INPAINT_REMOVAL = "inpainting-remove"
+    EDIT_MODE_PRODUCT_IMAGE = "product-image"
+    EDIT_MODE_BGSWAP = "background-swap"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -195,6 +210,18 @@ class VertexAIClient:
         return generated_images_uris
 
     def generate_text(self, prompt: str, media_uris: list[str] | None = None) -> str:
+        """Generates text from a prompt and optional media.
+
+        Args:
+            prompt: The generation prompt.
+            media_uris: Optional list of media to include in the prompt.
+
+        Raises:
+            VertexAIClientError: If text could not be generated.
+
+        Returns:
+            The generated text string.
+        """
         try:
             contents = []
             if media_uris:
@@ -215,3 +242,73 @@ class VertexAIClient:
                 f"VertexAIClient: Could not generate text {ex}",
             ) from ex
         return generation_response.text.strip()
+
+    def edit_image(
+        self,
+        image_uri: str,
+        prompt: str,
+        number_of_images: int = 1,
+        edit_mode: str = "",
+        mask_mode: str = "foreground",
+        segmentation_classes: list[str] | None = None,
+    ) -> str:
+        """Edits and image.
+
+        Args:
+            image_uri: The URI of the image to edit. E.g. "gs://dir/my_image.jpg"
+            prompt: The edit prompt.
+            number_of_images: Number of images to create after edits. Defaults to 1.
+            edit_mode: The edit mode for editing. Defaults to "".
+            mask_mode: The area to edit. Defaults to "foreground".
+            segmentation_classes: The objects to identify during masking.
+
+        Raises:
+            VertexAIClientError: If the image could not be edited.
+
+        Returns:
+            str: The edited image URI.
+        """
+        try:
+            edit_model = ImageGenerationModel.from_pretrained(IMAGEN_EDIT_MODEL)
+            image_uri_parts = image_uri.split("/")
+            bucket_name = image_uri_parts[2]
+            file_path = "/".join(image_uri_parts[3:])
+            ref_image = Image(gcs_uri=image_uri)
+            file, extension = os.path.splitext(file_path)
+            edited_file_name = f"{file}-edited{extension}"
+            raw_ref_image = RawReferenceImage(image=ref_image, reference_id=0)
+            segmentation_ids = None
+            if segmentation_classes:
+                segmentation_ids = [
+                    SemanticType[name].value for name in segmentation_classes
+                ]
+            seed = 1 if edit_mode == EditMode.EDIT_MODE_BGSWAP.name else None
+            mask_ref_image = MaskReferenceImage(
+                reference_id=1,
+                image=None,
+                mask_mode=mask_mode,
+                dilation=0.1,
+                segmentation_classes=segmentation_ids,
+            )
+            edited_image = edit_model.edit_image(
+                prompt=prompt,
+                edit_mode=EditMode[edit_mode].value,
+                reference_images=[raw_ref_image, mask_ref_image],
+                number_of_images=number_of_images,
+                safety_filter_level="block_few",
+                person_generation="allow_adult",
+                seed=seed,
+            )
+            edited_file_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=edited_image[0]._as_base64_string(),
+                mime_type=edited_image[0]._mime_type,
+                file_name=edited_file_name,
+                sub_dir="edited",
+            )
+        except Exception as ex:
+            logging.exception(ex)
+            raise VertexAIClientError(
+                f"VertexAIClient: Could not edit image {ex}",
+            ) from ex
+        return edited_file_uri

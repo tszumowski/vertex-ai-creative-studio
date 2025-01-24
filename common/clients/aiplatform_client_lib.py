@@ -1,24 +1,22 @@
 from __future__ import annotations
 
-import base64
 import os
+import time
 from typing import Any
 
+import google.auth
+import requests
 from absl import logging
 from google.cloud import aiplatform
 
 from common.clients import storage_client_lib, vertexai_client_lib
 
-IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
-SEGMENTATION_ENDPOINT = (
-    "projects/{project_id}/locations/{region}/"
-    f"publishers/google/models/{IMAGE_SEGMENTATION_MODEL}"
-)
+VIDEO_GENERATION_MODEL = "veo-001-preview-0815"
 AIPLATFORM_REGIONAL_ENDPOINT = "{region}-aiplatform.googleapis.com"
-IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
-EDIT_ENDPOINT = (
+VIDEO_GENERATION_ENDPOINT = (
+    "https://{region}-aiplatform.googleapis.com/v1beta1/"
     "projects/{project_id}/locations/{region}/"
-    f"publishers/google/models/{IMAGEN_EDIT_MODEL}"
+    f"publishers/google/models/{VIDEO_GENERATION_MODEL}"
 )
 
 
@@ -41,6 +39,18 @@ class AIPlatformClient:
                 ),
             },
         )
+        self.video_prediction_endpoint = (
+            f"{VIDEO_GENERATION_ENDPOINT}:predictLongRunning".format(
+                region=self.region,
+                project_id=self.project_id,
+            )
+        )
+        self.video_fetch_endpoint = (
+            f"{VIDEO_GENERATION_ENDPOINT}:fetchPredictOperation".format(
+                region=self.region,
+                project_id=self.project_id,
+            )
+        )
         logging.info(
             "ImagenClient: Prediction client initiated on project %s in %s: %s.",
             self.project_id,
@@ -50,135 +60,83 @@ class AIPlatformClient:
         self.storage_client = storage_client_lib.StorageClient()
         self.vertexai_client = vertexai_client_lib.VertexAIClient()
 
-    def edit_image(
+    def generate_video(
         self,
-        image_uri: str,
         prompt: str,
-        aspect_ratio: str = "1:1",
-        number_of_images: int = 1,
-        edit_mode: str = "",
-        foreground_background: str = "foreground",
+        image_uri: str | None = "",
+        aspect_ratio: str | None = "16:9",
     ) -> str:
-        """_summary_
+        """Generates a video with prompt and image input.
 
         Args:
-            image_uri: The URI of the image to edit. E.g. "gs://dir/my_image.jpg"
-            prompt: The edit prompt.
-            aspect_ratio: The aspect ratio. Defaults to "1:1".
-            number_of_images: Number of images to create after edits. Defaults to 1.
-            edit_mode: The edit mode for editing. Defaults to "".
-            foreground_background: The area to edit. Defaults to "foreground".
+            prompt: The prompt.
+            image_uri: (Optional) The image to use as reference for the video.
+            aspect_ratio: (Optional) The aspect ratio of the video.
 
         Returns:
-            An AI Platform prediction response object.
+            The GCS URI of the generated video.
+
+        Raises:
+            AIPlatformClientError: If the video could not be generated.
         """
-        try:
-            image_uri_parts = image_uri.split("/")
-            bucket_name = image_uri_parts[2]
-            file_path = "/".join(image_uri_parts[3:])
-            # Download file as b64 (utf-8) encoded string.
-            image_bytes = self.storage_client.download_as_string(
-                bucket_name=bucket_name,
-                file_path=file_path,
-            )
-
-            file, extension = file_path.split(".")
-            edited_file_uri = f"gs://{bucket_name}/{file}-edited.{extension}"
-
-            mask = self._get_image_segmentation_mask(image_uri, foreground_background)
-            mask_bytes = mask["bytesBase64Encoded"]
-            mask_file_path = f"{file}-mask.{extension}"
-
-            gcs_output = self.storage_client.upload(
-                bucket_name=bucket_name,
-                contents=mask["bytesBase64Encoded"],
-                mime_type=mask["mimeType"],
-                file_name=mask_file_path,
-            )
-            logging.info("ImagenClient: Wrote mask to %s", gcs_output)
-            instances = self._build_edit_prediction_instances(
-                image_bytes,
-                mask_bytes,
-                prompt,
-            )
-            parameters = {
-                "sampleCount": number_of_images,
-                "editMode": edit_mode,
+        instance = {"prompt": prompt}
+        if image_uri:
+            instance["image"] = {"gcsUri": image_uri, "mimeType": "png"}
+        req = {
+            "instances": [instance],
+            "parameters": {
+                "sampleCount": 1,
+                "seed": 1,
                 "aspectRatio": aspect_ratio,
-                "output_gcs_uri": edited_file_uri,
-            }
-            response = self.aiplatform_client.predict(
-                endpoint=EDIT_ENDPOINT.format(
-                    project_id=self.project_id,
-                    region=self.region,
-                ),
-                instances=instances,
-                parameters=parameters,
-            )
-            logging.info(
-                "ImagenClient: Got response %s from endpoint %s. Params: %s, Instances %s.",
-                response,
-                EDIT_ENDPOINT.format(project_id=self.project_id, region=self.region),
-                parameters,
-                instances,
-            )
-        except Exception as ex:
-            logging.exception(ex)
-            raise AIPlatformClientError(
-                f"AIPlatformClient: Could not generate images {ex}",
-            ) from ex
-        return response
-
-    def _get_image_segmentation_mask(self, image_uri: str, mode: str) -> dict[str, Any]:
-        description = self.vertexai_client.generate_description_from_image(image_uri)
-
-        instances = []
-        instances.append({"image": {"gcsUri": image_uri}})
-        instances[0]["prompt"] = description
-
-        response = self.aiplatform_client.predict(
-            endpoint=SEGMENTATION_ENDPOINT.format(
-                project_id=self.project_id,
-                region=self.region,
-            ),
-            instances=instances,
-            parameters={"mode": mode},
+            },
+        }
+        operation = self._send_request_to_google_api(
+            self.video_prediction_endpoint, req
         )
-        prediction = response.predictions[0]
-        label = prediction["labels"][0]["label"]
-        score = prediction["labels"][0]["score"]
-        logging.info(
-            "ImagenClient: Image segmentation: %s - %s bytes, %s %s",
-            prediction["mimeType"],
-            len(prediction["bytesBase64Encoded"]),
-            label,
-            score,
+        result = self._fetch_operation(operation["name"])
+        if result["response"]:
+            video = result["response"]["generatedSamples"][0]
+            return video["video"]["uri"]
+        raise AIPlatformClientError(
+            "VertexAIClient: Could not generate video.",
         )
-        return prediction
 
-    def _build_edit_prediction_instances(
+    def _send_request_to_google_api(
         self,
-        image_bytes: bytes,
-        mask_bytes: str | bytes,
-        prompt: str,
-    ) -> list[dict[str, Any]]:
-        reference_images = []
-        reference_images.append(
-            {
-                "referenceType": "REFERENCE_TYPE_RAW",
-                "referenceId": 1,
-                "referenceImage": {"bytesBase64Encoded": image_bytes},
-            },
-        )
-        reference_images.append(
-            {
-                "referenceType": "REFERENCE_TYPE_MASK",
-                "referenceId": 2,
-                "referenceImage": {"bytesBase64Encoded": mask_bytes},
-                "maskImageConfig": {
-                    "maskMode": "MASK_MODE_USER_PROVIDED",
-                    "dilation": 0.01,
-                },
-            },
-        )
-        return [{"referenceImages": reference_images, "prompt": prompt}]
+        api_endpoint: str,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Sends an HTTP request to a Google API endpoint.
+
+        Args:
+            api_endpoint: The URL of the Google API endpoint.
+            data: (Optional) Dictionary of data to send in the request body.
+
+        Returns:
+            The response from the Google API.
+        """
+
+        # Get access token calling API
+        creds, _ = google.auth.default()
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+        access_token = creds.token
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.post(api_endpoint, headers=headers, json=data, timeout=10)
+        response.raise_for_status()
+        return response.json()
+
+    def _fetch_operation(self, lro_name: str) -> dict[str, Any] | None:
+        request = {"operationName": lro_name}
+        # The generation usually takes 2 minutes. Loop 30 times, around 5 minutes.
+        for _ in range(30):
+            resp = self._send_request_to_google_api(self.video_fetch_endpoint, request)
+            if resp.get("done"):
+                return resp
+            time.sleep(10)
+        return None

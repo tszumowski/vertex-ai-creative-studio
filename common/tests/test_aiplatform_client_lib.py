@@ -74,68 +74,6 @@ class AIPlatformClientTest(unittest.TestCase):
             FakePredictResponse()
         )
 
-    def test_edit_image(self) -> None:
-        client = aiplatform_client_lib.AIPlatformClient()
-        client.edit_image(
-            image_uri="gs://fake/path/to/image.jpg",
-            prompt="fake prompt",
-        )
-        self.mock_storage_client.return_value.upload.assert_called_once_with(
-            bucket_name="fake",
-            contents=mock.ANY,
-            mime_type="image/jpg",
-            file_name="path/to/image-mask.jpg",
-        )
-        self.mock_storage_client.return_value.download_as_string.assert_called_once_with(
-            bucket_name="fake",
-            file_path="path/to/image.jpg",
-        )
-        self.mock_ai_platform_client.return_value.predict.assert_has_calls(
-            [
-                mock.call(
-                    endpoint="projects/test-project/locations/test-region/publishers/google/models/image-segmentation-001",
-                    instances=[
-                        {
-                            "image": {"gcsUri": "gs://fake/path/to/image.jpg"},
-                            "prompt": "Fake description",
-                        },
-                    ],
-                    parameters={"mode": "foreground"},
-                ),
-                mock.call(
-                    endpoint="projects/test-project/locations/test-region/publishers/google/models/imagen-3.0-capability-001",
-                    instances=[
-                        {
-                            "referenceImages": [
-                                {
-                                    "referenceType": "REFERENCE_TYPE_RAW",
-                                    "referenceId": 1,
-                                    "referenceImage": {"bytesBase64Encoded": mock.ANY},
-                                },
-                                {
-                                    "referenceType": "REFERENCE_TYPE_MASK",
-                                    "referenceId": 1,
-                                    "referenceImage": {"bytesBase64Encoded": mock.ANY},
-                                    "maskImageConfig": {
-                                        "maskMode": "MASK_MODE_USER_PROVIDED",
-                                        "dilation": 0.01,
-                                    },
-                                },
-                            ],
-                            "prompt": "fake prompt",
-                        },
-                    ],
-                    parameters={
-                        "sampleCount": 1,
-                        "editMode": "",
-                        "aspectRatio": "1:1",
-                        "output_gcs_uri": "gs://fake/path/to/image-edited.jpg",
-                    },
-                ),
-            ],
-            any_order=True,
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

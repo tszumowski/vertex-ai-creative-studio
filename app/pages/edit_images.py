@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
-
+from dataclasses import field
 import mesop as me
 from absl import logging
 from components.header import header
 from config import config_lib
 from utils import auth_request
 import base64
+from pages import constants
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
 
 config = config_lib.AppConfig()
 
@@ -45,7 +46,9 @@ class EditImagesPageState:
     edit_prompt_placeholder: str = ""
     edit_output_key: int = 0
     edit_uri: str = ""
-    foreground_background: str = "foreground"
+    mask_mode: str = "foreground"
+    segmentation_classes: list[str] = field(default_factory=list)
+    segmentation_classes_disabled: bool = True
 
 
 def content() -> None:
@@ -171,18 +174,24 @@ def content() -> None:
                             )
                             # Foreground / Background
                             me.select(
-                                label="Foreground / Background",
+                                label="Mask Mode",
                                 options=[
                                     me.SelectOption(
-                                        label="Foreground", value="foreground"
+                                        label="Foreground",
+                                        value="foreground",
                                     ),
                                     me.SelectOption(
-                                        label="Background", value="background"
+                                        label="Background",
+                                        value="background",
+                                    ),
+                                    me.SelectOption(
+                                        label="Semantic",
+                                        value="semantic",
                                     ),
                                 ],
-                                key="foreground_background",
-                                on_selection_change=on_selection_change_image,
-                                value=page_state.foreground_background,
+                                key="mask_mode",
+                                on_selection_change=on_selection_change_mask_mode,
+                                value=page_state.mask_mode,
                             )
                             # Editing mode
                             me.select(
@@ -200,10 +209,27 @@ def content() -> None:
                                         label="Inpainting removal",
                                         value="EDIT_MODE_INPAINT_REMOVAL",
                                     ),
+                                    me.SelectOption(
+                                        label="Product image",
+                                        value="EDIT_MODE_PRODUCT_IMAGE",
+                                    ),
+                                    me.SelectOption(
+                                        label="Background swap",
+                                        value="EDIT_MODE_BGSWAP",
+                                    ),
                                 ],
                                 key="edit_mode",
-                                on_selection_change=on_selection_change_image_edit_mode,
+                                on_selection_change=on_selection_change_state,
                                 value=page_state.edit_mode,
+                            )
+                            me.select(
+                                label="Semantic Types",
+                                disabled=page_state.segmentation_classes_disabled,
+                                options=constants.SEMANTIC_TYPES,
+                                key="segmentation_classes",
+                                on_selection_change=on_selection_change_segmentation_classes,
+                                value=page_state.segmentation_classes,
+                                multiple=True,
                             )
                             # Generate
                             me.button(
@@ -270,19 +296,37 @@ async def on_upload(event: me.UploadEvent) -> None:
         logging.exception("Something went wrong uploading image: %s", e)
 
 
-def on_selection_change_image(event: me.SelectSelectionChangeEvent) -> None:
+def on_selection_change_state(event: me.SelectSelectionChangeEvent) -> None:
     """Change Event For Selecting an Image Model."""
     state = me.state(EditImagesPageState)
     setattr(state, event.key, event.value)
 
 
-def on_selection_change_image_edit_mode(event: me.SelectSelectionChangeEvent) -> None:
-    """change image edit mode
-    Args:
-        e (me.SelectSelectionChangeEvent): event
-    """
+def on_selection_change_segmentation_classes(
+    event: me.SelectSelectionChangeEvent,
+) -> Generator[Any, Any, Any]:
+    """Change Event For Selecting an Image Model."""
     state = me.state(EditImagesPageState)
-    state.edit_mode = event.value
+
+    state.segmentation_classes = event.values
+    yield
+    if len(state.segmentation_classes) > 3:
+        state.segmentation_classes.pop()
+    yield
+
+
+def on_selection_change_mask_mode(
+    event: me.SelectSelectionChangeEvent,
+) -> Generator[Any, Any, Any]:
+    state = me.state(EditImagesPageState)
+    state.mask_mode = event.value
+
+    if event.value == "semantic":
+        state.segmentation_classes_disabled = False
+    else:
+        state.segmentation_classes_disabled = True
+        state.segmentation_classes.clear()
+    yield
 
 
 async def send_image_editing_request(state: EditImagesPageState) -> str:
@@ -290,10 +334,10 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
     payload = {
         "image_uri": state.upload_uri,
         "prompt": state.edit_prompt_placeholder,
-        "aspect_ratio": "1:1",
         "number_of_images": 1,
         "edit_mode": state.edit_mode,
-        "foreground_background": state.foreground_background,
+        "mask_mode": state.mask_mode,
+        "segmentation_classes": state.segmentation_classes,
     }
     logging.info("Making request with payload %s", payload)
     response = await auth_request.make_authenticated_request(

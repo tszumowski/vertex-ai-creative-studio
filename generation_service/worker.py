@@ -33,7 +33,18 @@ class ImageEditingServiceWorker(base_worker.BaseWorker):
 
     def execute(self, **kwargs: dict[str, Any]) -> str:
         """Execute the Image editing process."""
-        client = aiplatform_client_lib.AIPlatformClient()
+        client = vertexai_client_lib.VertexAIClient()
         edited_image_uri = client.edit_image(**kwargs)
         # Add other tasks e.g. persiting to database here.
         return edited_image_uri
+
+
+class VideoGenerationServiceWorker(base_worker.BaseWorker):
+    """Processes a video generation request."""
+
+    def execute(self, **kwargs: dict[str, Any]) -> str:
+        """Execute the Video generation process."""
+        client = aiplatform_client_lib.AIPlatformClient()
+        video_uri = client.generate_video(**kwargs)
+        # Add other tasks e.g. persiting to database here.
+        return video_uri
