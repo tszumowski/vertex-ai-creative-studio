@@ -45,6 +45,7 @@ def generate_images_page() -> None:
     security_policy=me.SecurityPolicy(
         dangerously_disable_trusted_types=True,
         allowed_connect_srcs="https://apis.google.com",
+        allowed_iframe_parents=["https://google.github.io"],
     ),
 )
 def edit_images_page() -> None:

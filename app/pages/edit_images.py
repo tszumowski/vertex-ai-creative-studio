@@ -43,12 +43,18 @@ class EditImagesPageState:
     upload_file_key: int = 0
     upload_uri: str = ""
     edit_mode: str = "EDIT_MODE_INPAINT_INSERTION"
+
     edit_prompt_placeholder: str = ""
     edit_output_key: int = 0
     edit_uri: str = ""
     mask_mode: str = "foreground"
+    mask_mode_disabled: bool = False
     segmentation_classes: list[str] = field(default_factory=list)
     segmentation_classes_disabled: bool = True
+    initial_edit_target_height: str = "512"
+    initial_edit_target_width: str = "512"
+    edit_target_height: str = "512"
+    edit_target_width: str = "512"
 
 
 def content() -> None:
@@ -190,6 +196,7 @@ def content() -> None:
                                     ),
                                 ],
                                 key="mask_mode",
+                                disabled=page_state.mask_mode_disabled,
                                 on_selection_change=on_selection_change_mask_mode,
                                 value=page_state.mask_mode,
                             )
@@ -213,24 +220,51 @@ def content() -> None:
                                         label="Product image",
                                         value="EDIT_MODE_PRODUCT_IMAGE",
                                     ),
-                                    me.SelectOption(
-                                        label="Background swap",
-                                        value="EDIT_MODE_BGSWAP",
-                                    ),
+                                    # Not available, yet.
+                                    # me.SelectOption(
+                                    #     label="Background swap",
+                                    #     value="EDIT_MODE_BGSWAP",
+                                    # ),
                                 ],
                                 key="edit_mode",
                                 on_selection_change=on_selection_change_state,
                                 value=page_state.edit_mode,
                             )
-                            me.select(
-                                label="Semantic Types",
-                                disabled=page_state.segmentation_classes_disabled,
-                                options=constants.SEMANTIC_TYPES,
-                                key="segmentation_classes",
-                                on_selection_change=on_selection_change_segmentation_classes,
-                                value=page_state.segmentation_classes,
-                                multiple=True,
-                            )
+                            if (
+                                page_state.edit_mode == "EDIT_MODE_OUTPAINT"
+                                and page_state.mask_mode != "semantic"
+                            ):
+                                with me.box(
+                                    style=me.Style(
+                                        display="flex",
+                                        justify_content="space-between",
+                                        flex_direction="column",
+                                    ),
+                                ):
+                                    me.input(
+                                        label="Target Height",
+                                        appearance="outline",
+                                        value=page_state.initial_edit_target_height,
+                                        on_input=on_input,
+                                        key="edit_target_height",
+                                    )
+                                    me.input(
+                                        label="Target Width",
+                                        appearance="outline",
+                                        value=page_state.initial_edit_target_width,
+                                        on_input=on_input,
+                                        key="edit_target_width",
+                                    )
+                            else:
+                                me.select(
+                                    label="Semantic Types",
+                                    disabled=page_state.segmentation_classes_disabled,
+                                    options=constants.SEMANTIC_TYPES,
+                                    key="segmentation_classes",
+                                    on_selection_change=on_selection_change_segmentation_classes,
+                                    value=page_state.segmentation_classes,
+                                    multiple=True,
+                                )
                             # Generate
                             me.button(
                                 "Generate",
@@ -238,6 +272,11 @@ def content() -> None:
                                 type="flat",
                                 on_click=on_click_image_edit,
                             )
+
+
+def on_input(event: me.InputEvent) -> None:
+    state = me.state(EditImagesPageState)
+    setattr(state, event.key, event.value)
 
 
 # Event Handlers
@@ -296,10 +335,18 @@ async def on_upload(event: me.UploadEvent) -> None:
         logging.exception("Something went wrong uploading image: %s", e)
 
 
-def on_selection_change_state(event: me.SelectSelectionChangeEvent) -> None:
+def on_selection_change_state(
+    event: me.SelectSelectionChangeEvent,
+) -> Generator[Any, Any, Any]:
     """Change Event For Selecting an Image Model."""
     state = me.state(EditImagesPageState)
     setattr(state, event.key, event.value)
+    if state.edit_mode == "EDIT_MODE_OUTPAINT":
+        state.mask_mode = "user_provided"
+        state.mask_mode_disabled = True
+    else:
+        state.mask_mode_disabled = False
+    yield
 
 
 def on_selection_change_segmentation_classes(
@@ -329,8 +376,14 @@ def on_selection_change_mask_mode(
     yield
 
 
+def _get_target_image_size(state: EditImagesPageState) -> tuple[int, int]:
+    if state.edit_mode == "EDIT_MODE_OUTPAINT":
+        return (int(state.edit_target_height), int(state.edit_target_height))
+    return None
+
+
 async def send_image_editing_request(state: EditImagesPageState) -> str:
-    """event for image editing"""
+    """Event for image editing."""
     payload = {
         "image_uri": state.upload_uri,
         "prompt": state.edit_prompt_placeholder,
@@ -338,6 +391,7 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
         "edit_mode": state.edit_mode,
         "mask_mode": state.mask_mode,
         "segmentation_classes": state.segmentation_classes,
+        "target_size": _get_target_image_size(state),
     }
     logging.info("Making request with payload %s", payload)
     response = await auth_request.make_authenticated_request(

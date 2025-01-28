@@ -1,4 +1,4 @@
-"""Data model for the image generation service."""
+"""Data model for the generation service."""
 
 from __future__ import annotations
 
@@ -35,6 +35,7 @@ class EditImageRequest(BaseModel):
     edit_mode: str = ""
     mask_mode: str = "foreground"
     segmentation_classes: list[str] = []
+    target_size: tuple[int, int] | None = None
 
 
 class EditImageResponse(BaseModel):

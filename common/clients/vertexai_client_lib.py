@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import enum
 import dataclasses
+import enum
 import mimetypes
 import os
 from typing import cast
@@ -19,14 +19,15 @@ from vertexai.generative_models import (
     Part,
 )
 from vertexai.preview.vision_models import (
-    ControlReferenceImage,
     Image,
     ImageGenerationModel,
     MaskReferenceImage,
     RawReferenceImage,
 )
-from common.segmentation_utils import SemanticType
+
+from common import image_utils
 from common.clients import storage_client_lib
+from common.segmentation_utils import SemanticType
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
@@ -251,6 +252,7 @@ class VertexAIClient:
         edit_mode: str = "",
         mask_mode: str = "foreground",
         segmentation_classes: list[str] | None = None,
+        target_size: tuple[str, str] | None = None,
     ) -> str:
         """Edits and image.
 
@@ -268,37 +270,69 @@ class VertexAIClient:
         Returns:
             str: The edited image URI.
         """
+
         try:
             edit_model = ImageGenerationModel.from_pretrained(IMAGEN_EDIT_MODEL)
             image_uri_parts = image_uri.split("/")
             bucket_name = image_uri_parts[2]
             file_path = "/".join(image_uri_parts[3:])
-            ref_image = Image(gcs_uri=image_uri)
             file, extension = os.path.splitext(file_path)
             edited_file_name = f"{file}-edited{extension}"
-            raw_ref_image = RawReferenceImage(image=ref_image, reference_id=0)
-            segmentation_ids = None
-            if segmentation_classes:
-                segmentation_ids = [
-                    SemanticType[name].value for name in segmentation_classes
-                ]
-            seed = 1 if edit_mode == EditMode.EDIT_MODE_BGSWAP.name else None
-            mask_ref_image = MaskReferenceImage(
-                reference_id=1,
-                image=None,
-                mask_mode=mask_mode,
-                dilation=0.1,
-                segmentation_classes=segmentation_ids,
-            )
-            edited_image = edit_model.edit_image(
-                prompt=prompt,
-                edit_mode=EditMode[edit_mode].value,
-                reference_images=[raw_ref_image, mask_ref_image],
-                number_of_images=number_of_images,
-                safety_filter_level="block_few",
-                person_generation="allow_adult",
-                seed=seed,
-            )
+
+            image = Image(gcs_uri=image_uri)
+            if edit_mode == EditMode.EDIT_MODE_OUTPAINT.name:
+                # To use the outpainting feature, we must create an image mask and
+                # prepare the original image by padding some empty space around it.
+                image_pil_outpaint, mask_pil_outpaint = image_utils.pad_image_and_mask(
+                    image,
+                    target_size,
+                    0,
+                    0,
+                )
+                raw_ref_image = RawReferenceImage(
+                    image=image_pil_outpaint,
+                    reference_id=0,
+                )
+                mask_ref_image = MaskReferenceImage(
+                    reference_id=1,
+                    image=image_utils.get_bytes_from_pil(mask_pil_outpaint),
+                    mask_mode="user_provided",
+                    dilation=0.03,
+                )
+            else:
+                raw_ref_image = RawReferenceImage(image=image, reference_id=0)
+                segmentation_ids = None
+                if segmentation_classes:
+                    segmentation_ids = [
+                        SemanticType[name].value for name in segmentation_classes
+                    ]
+                seed = 1 if edit_mode == EditMode.EDIT_MODE_BGSWAP.name else None
+                mask_ref_image = MaskReferenceImage(
+                    reference_id=1,
+                    image=None,
+                    mask_mode=mask_mode,
+                    dilation=0.1,
+                    segmentation_classes=segmentation_ids,
+                )
+            if edit_mode == EditMode.EDIT_MODE_PRODUCT_IMAGE.name:
+                edited_image = edit_model.edit_image(
+                    base_image=Image.load_from_file(image_uri),
+                    prompt=prompt,
+                    edit_mode=EditMode[edit_mode].value,
+                    number_of_images=number_of_images,
+                    safety_filter_level="block_few",
+                    person_generation="allow_adult",
+                )
+            else:
+                edited_image = edit_model.edit_image(
+                    prompt=prompt,
+                    edit_mode=EditMode[edit_mode].value,
+                    reference_images=[raw_ref_image, mask_ref_image],
+                    number_of_images=number_of_images,
+                    safety_filter_level="block_few",
+                    person_generation="allow_adult",
+                    seed=seed,
+                )
             edited_file_uri = self.storage_client.upload(
                 bucket_name=bucket_name,
                 contents=edited_image[0]._as_base64_string(),
