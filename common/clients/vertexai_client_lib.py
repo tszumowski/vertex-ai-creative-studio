@@ -190,7 +190,7 @@ class VertexAIClient:
                 add_watermark=add_watermark,
                 aspect_ratio=aspect_ratio,
                 number_of_images=num_images,
-                output_gcs_uri=self.bucket_uri,
+                output_gcs_uri=f"{self.bucket_uri}/generated",
                 language=language,
                 negative_prompt=negative_prompt,
             )
@@ -262,21 +262,22 @@ class VertexAIClient:
             number_of_images: Number of images to create after edits. Defaults to 1.
             edit_mode: The edit mode for editing. Defaults to "".
             mask_mode: The area to edit. Defaults to "foreground".
-            segmentation_classes: The objects to identify during masking.
+            segmentation_classes: (Optional) The objects to identify during masking.
+            target_size: (Optional) The height and width of the target image.
 
         Raises:
             VertexAIClientError: If the image could not be edited.
 
         Returns:
-            str: The edited image URI.
+            The edited image URI.
         """
 
         try:
             edit_model = ImageGenerationModel.from_pretrained(IMAGEN_EDIT_MODEL)
             image_uri_parts = image_uri.split("/")
             bucket_name = image_uri_parts[2]
-            file_path = "/".join(image_uri_parts[3:])
-            file, extension = os.path.splitext(file_path)
+            file_name = os.path.basename(image_uri)
+            file, extension = os.path.splitext(file_name)
             edited_file_name = f"{file}-edited{extension}"
 
             image = Image(gcs_uri=image_uri)
@@ -290,7 +291,7 @@ class VertexAIClient:
                     0,
                 )
                 raw_ref_image = RawReferenceImage(
-                    image=image_pil_outpaint,
+                    image=image_utils.get_bytes_from_pil(image_pil_outpaint),
                     reference_id=0,
                 )
                 mask_ref_image = MaskReferenceImage(
@@ -306,7 +307,6 @@ class VertexAIClient:
                     segmentation_ids = [
                         SemanticType[name].value for name in segmentation_classes
                     ]
-                seed = 1 if edit_mode == EditMode.EDIT_MODE_BGSWAP.name else None
                 mask_ref_image = MaskReferenceImage(
                     reference_id=1,
                     image=None,
@@ -314,25 +314,16 @@ class VertexAIClient:
                     dilation=0.1,
                     segmentation_classes=segmentation_ids,
                 )
-            if edit_mode == EditMode.EDIT_MODE_PRODUCT_IMAGE.name:
-                edited_image = edit_model.edit_image(
-                    base_image=Image.load_from_file(image_uri),
-                    prompt=prompt,
-                    edit_mode=EditMode[edit_mode].value,
-                    number_of_images=number_of_images,
-                    safety_filter_level="block_few",
-                    person_generation="allow_adult",
-                )
-            else:
-                edited_image = edit_model.edit_image(
-                    prompt=prompt,
-                    edit_mode=EditMode[edit_mode].value,
-                    reference_images=[raw_ref_image, mask_ref_image],
-                    number_of_images=number_of_images,
-                    safety_filter_level="block_few",
-                    person_generation="allow_adult",
-                    seed=seed,
-                )
+            seed = 1 if edit_mode == EditMode.EDIT_MODE_BGSWAP.name else None
+            edited_image = edit_model.edit_image(
+                prompt=prompt,
+                edit_mode=EditMode[edit_mode].value,
+                reference_images=[raw_ref_image, mask_ref_image],
+                number_of_images=number_of_images,
+                safety_filter_level="block_few",
+                person_generation="allow_adult",
+                seed=seed,
+            )
             edited_file_uri = self.storage_client.upload(
                 bucket_name=bucket_name,
                 contents=edited_image[0]._as_base64_string(),

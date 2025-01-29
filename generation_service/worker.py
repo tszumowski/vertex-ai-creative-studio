@@ -12,9 +12,9 @@ class ImageGenerationServiceWorker(base_worker.BaseWorker):
     def execute(self, **kwargs: dict[str, Any]) -> list[str]:
         """Execute the Image generation process."""
         client = vertexai_client_lib.VertexAIClient()
-        images = client.generate_images(**kwargs)
+        image_uris = client.generate_images(**kwargs)
         # Add other tasks e.g. persiting to database here.
-        return images
+        return image_uris
 
 
 class TextGenerationServiceWorker(base_worker.BaseWorker):

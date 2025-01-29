@@ -9,6 +9,7 @@ from config import config_lib
 from utils import auth_request
 import base64
 from pages import constants
+from state.state import AppState
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -45,7 +46,6 @@ class EditImagesPageState:
     edit_mode: str = "EDIT_MODE_INPAINT_INSERTION"
 
     edit_prompt_placeholder: str = ""
-    edit_output_key: int = 0
     edit_uri: str = ""
     mask_mode: str = "foreground"
     mask_mode_disabled: bool = False
@@ -134,24 +134,37 @@ def content() -> None:
                         with me.box(style=_BOX_STYLE):
                             me.text("Output Image", style=me.Style(font_weight="bold"))
                             me.box(style=me.Style(height="12px"))
-
-                            if page_state.edit_uri:
-                                me.image(
-                                    src=page_state.edit_uri.replace(
-                                        "gs://",
-                                        "https://storage.mtls.cloud.google.com/",
-                                    ),
+                            if page_state.is_loading:
+                                with me.box(
                                     style=me.Style(
-                                        height="400px",
-                                        border_radius=12,
+                                        align_items="center",
+                                        display="flex",
+                                        justify_content="center",
+                                        position="relative",
+                                        top="25%",
                                     ),
-                                    key=str(page_state.edit_output_key),
-                                )
+                                ):
+                                    me.progress_spinner()
                             else:
-                                me.box(style=me.Style(height="400px", width="400px"))
-                            me.box(style=me.Style(height="12px"))
-
-                            me.box(style=me.Style(height="20px"))
+                                if page_state.edit_uri:
+                                    me.image(
+                                        src=page_state.edit_uri.replace(
+                                            "gs://",
+                                            "https://storage.mtls.cloud.google.com/",
+                                        ),
+                                        style=me.Style(
+                                            height="400px",
+                                            border_radius=12,
+                                            justify_content="center",
+                                            display="flex",
+                                        ),
+                                    )
+                                else:
+                                    me.box(
+                                        style=me.Style(height="400px", width="400px"),
+                                    )
+                                me.box(style=me.Style(height="12px"))
+                                me.box(style=me.Style(height="20px"))
 
                     # Edit controls
                     with me.box(style=_BOX_STYLE):
@@ -179,57 +192,31 @@ def content() -> None:
                                 on_click=on_click_clear_images,
                             )
                             # Foreground / Background
-                            me.select(
-                                label="Mask Mode",
-                                options=[
-                                    me.SelectOption(
-                                        label="Foreground",
-                                        value="foreground",
-                                    ),
-                                    me.SelectOption(
-                                        label="Background",
-                                        value="background",
-                                    ),
-                                    me.SelectOption(
-                                        label="Semantic",
-                                        value="semantic",
-                                    ),
-                                ],
-                                key="mask_mode",
-                                disabled=page_state.mask_mode_disabled,
-                                on_selection_change=on_selection_change_mask_mode,
-                                value=page_state.mask_mode,
-                            )
+                            with me.tooltip(
+                                message=(
+                                    "Isolate areas of your image for editing. "
+                                    "Apply changes only within the masked region."
+                                ),
+                            ):
+                                me.select(
+                                    label="Mask Mode",
+                                    options=constants.MASK_MODE_OPTIONS,
+                                    key="mask_mode",
+                                    disabled=page_state.mask_mode_disabled,
+                                    on_selection_change=on_selection_change_mask_mode,
+                                    value=page_state.mask_mode,
+                                )
                             # Editing mode
-                            me.select(
-                                label="Edit mode",
-                                options=[
-                                    me.SelectOption(
-                                        label="Outpainting",
-                                        value="EDIT_MODE_OUTPAINT",
-                                    ),
-                                    me.SelectOption(
-                                        label="Inpainting insert",
-                                        value="EDIT_MODE_INPAINT_INSERTION",
-                                    ),
-                                    me.SelectOption(
-                                        label="Inpainting removal",
-                                        value="EDIT_MODE_INPAINT_REMOVAL",
-                                    ),
-                                    me.SelectOption(
-                                        label="Product image",
-                                        value="EDIT_MODE_PRODUCT_IMAGE",
-                                    ),
-                                    # Not available, yet.
-                                    # me.SelectOption(
-                                    #     label="Background swap",
-                                    #     value="EDIT_MODE_BGSWAP",
-                                    # ),
-                                ],
-                                key="edit_mode",
-                                on_selection_change=on_selection_change_state,
-                                value=page_state.edit_mode,
-                            )
+                            with me.tooltip(
+                                message=("Specify the type of edit to apply."),
+                            ):
+                                me.select(
+                                    label="Edit mode",
+                                    options=constants.EDIT_MODE_OPTIONS,
+                                    key="edit_mode",
+                                    on_selection_change=on_selection_change_state,
+                                    value=page_state.edit_mode,
+                                )
                             if (
                                 page_state.edit_mode == "EDIT_MODE_OUTPAINT"
                                 and page_state.mask_mode != "semantic"
@@ -246,6 +233,7 @@ def content() -> None:
                                         appearance="outline",
                                         value=page_state.initial_edit_target_height,
                                         on_input=on_input,
+                                        on_blur=on_blur,
                                         key="edit_target_height",
                                     )
                                     me.input(
@@ -253,6 +241,7 @@ def content() -> None:
                                         appearance="outline",
                                         value=page_state.initial_edit_target_width,
                                         on_input=on_input,
+                                        on_blur=on_blur,
                                         key="edit_target_width",
                                     )
                             else:
@@ -279,6 +268,11 @@ def on_input(event: me.InputEvent) -> None:
     setattr(state, event.key, event.value)
 
 
+def on_blur(event: me.InputBlurEvent) -> None:
+    state = me.state(EditImagesPageState)
+    setattr(state, event.key, event.value)
+
+
 # Event Handlers
 def on_click_clear_images(event: me.ClickEvent) -> None:
     """Click Event to clear images."""
@@ -290,6 +284,9 @@ def on_click_clear_images(event: me.ClickEvent) -> None:
     state.upload_file_key += 1
     state.upload_uri = ""
     state.textarea_key += 1
+    state.edit_uri = ""
+    state.edit_target_height = ""
+    state.edit_target_width = ""
 
 
 def on_blur_image_edit_prompt(event: me.InputBlurEvent) -> None:
@@ -378,7 +375,7 @@ def on_selection_change_mask_mode(
 
 def _get_target_image_size(state: EditImagesPageState) -> tuple[int, int]:
     if state.edit_mode == "EDIT_MODE_OUTPAINT":
-        return (int(state.edit_target_height), int(state.edit_target_height))
+        return (int(state.edit_target_width), int(state.edit_target_height))
     return None
 
 
@@ -412,8 +409,6 @@ async def on_click_image_edit(event: me.ClickEvent) -> AsyncGenerator[Any, Any, 
     """Creates images from Imagen and returns a list of gcs uris."""
     del event  # Unused.
     state = me.state(EditImagesPageState)
-    state.edit_uri = ""
-    state.edit_output_key += 1
     state.is_loading = True
     yield
     state.edit_uri = await send_image_editing_request(state)

@@ -47,6 +47,9 @@ class GenerateImagesPageState:
     prompt_placeholder: str = ""
     textarea_key: int = 0
 
+    rewriter_prompt: str = ""
+    critic_prompt: str = ""
+
     negative_prompt_input: str = ""
     negative_prompt_placeholder: str = ""
     negative_prompt_key: int = 0  # Or handle None later
@@ -68,8 +71,9 @@ class GenerateImagesPageState:
 
 def content(app_state: me.state) -> None:
     """Generate Images Page"""
-
     page_state = me.state(GenerateImagesPageState)
+    page_state.rewriter_prompt = app_state.rewriter_prompt
+    page_state.critic_prompt = app_state.critic_prompt
     with me.box(
         style=me.Style(
             display="flex",
@@ -463,7 +467,11 @@ async def on_click_rewrite_prompt(
     state = me.state(GenerateImagesPageState)
     if state.prompt_input:
         payload = {
-            "prompt": constants.REWRITER_PROMPT.format(prompt=state.prompt_input),
+            "prompt": (
+                constants.REWRITER_PROMPT.format(prompt=state.prompt_input)
+                if not state.rewriter_prompt
+                else state.rewriter_prompt.format(prompt=state.prompt_input)
+            ),
         }
         logging.info("Making request with payload %s", payload)
         response = await auth_request.make_authenticated_request(
@@ -506,7 +514,11 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
 
 async def send_image_critic_request(state: GenerateImagesPageState) -> str:
     payload = {
-        "prompt": constants.CRITIC_PROMPT.format(prompt=state.prompt_input),
+        "prompt": (
+            constants.CRITIC_PROMPT.format(prompt=state.prompt_input)
+            if not state.critic_prompt
+            else state.critic_prompt.format(prompt=state.prompt_input)
+        ),
         "media_uris": state.image_uris,
     }
     logging.info("Making request with payload %s", payload)

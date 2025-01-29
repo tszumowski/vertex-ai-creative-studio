@@ -7,6 +7,46 @@ NUMBER_OF_IMAGES_OPTIONS = [
     me.SelectOption(label="4", value="4"),
 ]
 
+MASK_MODE_OPTIONS = [
+    me.SelectOption(
+        label="Foreground",
+        value="foreground",
+    ),
+    me.SelectOption(
+        label="Background",
+        value="background",
+    ),
+    me.SelectOption(
+        label="Semantic",
+        value="semantic",
+    ),
+]
+
+EDIT_MODE_OPTIONS = [
+    me.SelectOption(
+        label="Outpainting",
+        value="EDIT_MODE_OUTPAINT",
+    ),
+    me.SelectOption(
+        label="Inpainting insert",
+        value="EDIT_MODE_INPAINT_INSERTION",
+    ),
+    me.SelectOption(
+        label="Inpainting removal",
+        value="EDIT_MODE_INPAINT_REMOVAL",
+    ),
+    # Not available, yet.
+    # me.SelectOption(
+    #    label="Product image",
+    #    value="EDIT_MODE_PRODUCT_IMAGE",
+    # ),
+    #
+    # me.SelectOption(
+    #     label="Background swap",
+    #     value="EDIT_MODE_BGSWAP",
+    # ),
+]
+
 COMPOSITION_OPTIONS = [
     me.SelectOption(label="None", value="None"),
     me.SelectOption(label="Closeup", value="Closeup"),
