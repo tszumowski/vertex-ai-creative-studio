@@ -6,7 +6,7 @@ import dataclasses
 import enum
 import mimetypes
 import os
-from typing import cast
+from typing import Literal, cast
 
 import vertexai
 from absl import logging
@@ -22,6 +22,7 @@ from vertexai.preview.vision_models import (
     Image,
     ImageGenerationModel,
     MaskReferenceImage,
+    MultiModalEmbeddingModel,
     RawReferenceImage,
 )
 
@@ -31,6 +32,9 @@ from common.segmentation_utils import SemanticType
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
+IMAGEN_GENERATION_MODEL = "imagen-3.0-generate-001"
+MULTIMODAL_EMBEDDING_MODEL = "multimodalembedding@001"
+EMBEDDING_DIMENSIONS = 128
 SEGMENTATION_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGE_SEGMENTATION_MODEL}"
@@ -265,13 +269,12 @@ class VertexAIClient:
             segmentation_classes: (Optional) The objects to identify during masking.
             target_size: (Optional) The height and width of the target image.
 
-        Raises:
-            VertexAIClientError: If the image could not be edited.
-
         Returns:
             The edited image URI.
-        """
 
+        Raises:
+            VertexAIClientError: If the image could not be edited.
+        """
         try:
             edit_model = ImageGenerationModel.from_pretrained(IMAGEN_EDIT_MODEL)
             image_uri_parts = image_uri.split("/")
@@ -281,6 +284,7 @@ class VertexAIClient:
             edited_file_name = f"{file}-edited{extension}"
 
             image = Image(gcs_uri=image_uri)
+            seed = None
             if edit_mode == EditMode.EDIT_MODE_OUTPAINT.name:
                 # To use the outpainting feature, we must create an image mask and
                 # prepare the original image by padding some empty space around it.
@@ -300,7 +304,18 @@ class VertexAIClient:
                     mask_mode="user_provided",
                     dilation=0.03,
                 )
-            else:
+            if edit_mode == EditMode.EDIT_MODE_BGSWAP.name:
+                raw_ref_image = RawReferenceImage(image=image, reference_id=0)
+                mask_ref_image = MaskReferenceImage(
+                    reference_id=1,
+                    image=None,
+                    mask_mode="background",
+                )
+                seed = 1
+            if edit_mode in (
+                EditMode.EDIT_MODE_INPAINT_INSERTION.name,
+                EditMode.EDIT_MODE_INPAINT_REMOVAL.name,
+            ):
                 raw_ref_image = RawReferenceImage(image=image, reference_id=0)
                 segmentation_ids = None
                 if segmentation_classes:
@@ -314,7 +329,6 @@ class VertexAIClient:
                     dilation=0.1,
                     segmentation_classes=segmentation_ids,
                 )
-            seed = 1 if edit_mode == EditMode.EDIT_MODE_BGSWAP.name else None
             edited_image = edit_model.edit_image(
                 prompt=prompt,
                 edit_mode=EditMode[edit_mode].value,
@@ -337,3 +351,78 @@ class VertexAIClient:
                 f"VertexAIClient: Could not edit image {ex}",
             ) from ex
         return edited_file_uri
+
+    def upscale_image(
+        self,
+        image_uri: str,
+        new_size: int | None = 2048,
+        upscale_factor: Literal["x2", "x4"] | None = None,
+        output_mime_type: Literal["image/png", "image/jpeg"] | None = "image/png",
+        output_compression_quality: int | None = None,
+    ) -> str:
+        """Upscales an image.
+
+        Args:
+            image_uri: The URI of the image to upscale. E.g. "gs://dir/my_image.jpg"
+            new_size: The size of the biggest dimension of the upscaled.
+            upscale_factor: The upscaling factor. Supported values are "x2" and
+                "x4". Defaults to None.
+            output_mime_type: The mime type of the output image. Supported values
+                are "image/png" and "image/jpeg". Defaults to "image/png".
+            output_compression_quality: The compression quality of the output
+                image
+                as an int (0-100). Only applicable if the output mime type is
+                "image/jpeg". Defaults to None.
+
+        Returns:
+            The GCS URI of the upscaled file.
+
+        Raises:
+            VertexAIClientError: If the image could not be upscaled.
+        """
+        try:
+            gen_model = ImageGenerationModel.from_pretrained(IMAGEN_GENERATION_MODEL)
+            image = Image(gcs_uri=image_uri)
+            upscaled_image = gen_model.upscale_image(
+                image=image,
+                new_size=new_size,
+                upscale_factor=upscale_factor,
+                output_mime_type=output_mime_type,
+                output_compression_quality=output_compression_quality,
+            )
+            image_uri_parts = image_uri.split("/")
+            bucket_name = image_uri_parts[2]
+            file_name = os.path.basename(image_uri)
+            file, _ = os.path.splitext(file_name)
+            extension = mimetypes.guess_all_extensions(output_mime_type)[0]
+            upscaled_file_name = f"{file}-upscaled{extension}"
+            upscaled_file_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=upscaled_image._as_base64_string(),
+                mime_type=upscaled_image._mime_type,
+                file_name=upscaled_file_name,
+                sub_dir="upscaled",
+            )
+        except Exception as ex:
+            logging.exception(ex)
+            raise VertexAIClientError(
+                f"VertexAIClient: Could not upscale image {ex}",
+            ) from ex
+        return upscaled_file_uri
+
+    def get_embeddings_for_image(
+        self,
+        image_uri: str,
+        prompt: str | None = None,
+    ) -> tuple[float, float]:
+        embedding_model = MultiModalEmbeddingModel.from_pretrained(
+            MULTIMODAL_EMBEDDING_MODEL,
+        )
+        image = Image.load_from_file(image_uri)
+
+        embeddings = embedding_model.get_embeddings(
+            image=image,
+            contextual_text=prompt,
+            dimension=EMBEDDING_DIMENSIONS,
+        )
+        return embeddings.image_embedding, embeddings.text_embedding

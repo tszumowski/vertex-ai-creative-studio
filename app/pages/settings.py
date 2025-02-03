@@ -120,7 +120,7 @@ def content(app_state: me.state) -> None:
                             ),
                         ):
                             me.button(
-                                "Set Rewriter",
+                                "Set Critic",
                                 color="primary",
                                 type="flat",
                                 on_click=on_click_set_critic_prompt,

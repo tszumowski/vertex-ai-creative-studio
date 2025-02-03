@@ -8,6 +8,8 @@ from models import (
     EditImageResponse,
     ImageGenerationRequest,
     ImageGenerationResponse,
+    ImageUpscalingRequest,
+    ImageUpscalingResponse,
     TextGenerationRequest,
     TextGenerationResponse,
     VideoGenerationRequest,
@@ -16,6 +18,7 @@ from models import (
 from worker import (
     ImageEditingServiceWorker,
     ImageGenerationServiceWorker,
+    ImageUpscalingServiceWorker,
     TextGenerationServiceWorker,
     VideoGenerationServiceWorker,
 )
@@ -74,6 +77,24 @@ def edit_image(request: EditImageRequest) -> EditImageResponse:
     except vertexai_client_lib.VertexAIClientError as err:
         logging.error(
             "ImageEditingServiceWorker: An error occured trying to edit image: %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", str(err)),
+        ) from err
+
+
+@app.post("/upscale_image")
+def upscale_image(request: ImageUpscalingRequest) -> ImageUpscalingResponse:
+    try:
+        kwargs = request.dict()
+        worker = ImageUpscalingServiceWorker(settings=None)
+        upscaled_image_uri = worker.execute(**kwargs)
+        return {"upscaled_image_uri": upscaled_image_uri}
+    except vertexai_client_lib.VertexAIClientError as err:
+        logging.error(
+            "ImageUpscalingServiceWorker: An error occured trying to upscale image: %s",
             err,
         )
         raise fastapi.HTTPException(

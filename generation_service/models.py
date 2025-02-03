@@ -50,3 +50,15 @@ class VideoGenerationRequest(BaseModel):
 
 class VideoGenerationResponse(BaseModel):
     video_uri: str
+
+
+class ImageUpscalingRequest(BaseModel):
+    image_uri: str
+    new_size: int | None = 2048
+    upscale_factor: str | None = None
+    output_mime_type: str | None = "image/png"
+    output_compression_quality: int | None = None
+
+
+class ImageUpscalingResponse(BaseModel):
+    upscaled_image_uri: str

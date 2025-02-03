@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import base64
 from dataclasses import field
+from typing import TYPE_CHECKING, Any
+
 import mesop as me
 from absl import logging
 from components.header import header
 from config import config_lib
-from utils import auth_request
-import base64
 from pages import constants
-from state.state import AppState
+from utils import auth_request
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -44,11 +44,14 @@ class EditImagesPageState:
     upload_file_key: int = 0
     upload_uri: str = ""
     edit_mode: str = "EDIT_MODE_INPAINT_INSERTION"
+    edit_mode_placeholder: str = ""
 
-    edit_prompt_placeholder: str = ""
-    edit_uri: str = ""
     mask_mode: str = "foreground"
+    mask_mode_placeholder = ""
     mask_mode_disabled: bool = False
+
+    edit_uri: str = ""
+
     segmentation_classes: list[str] = field(default_factory=list)
     segmentation_classes_disabled: bool = True
     initial_edit_target_height: str = "512"
@@ -170,13 +173,13 @@ def content() -> None:
                     with me.box(style=_BOX_STYLE):
                         me.textarea(
                             label="prompt for image editing",
-                            key=str(page_state.textarea_key),
-                            on_blur=on_blur_image_edit_prompt,
+                            key="prompt_input",
+                            on_blur=on_blur,
                             rows=2,
                             autosize=True,
                             max_rows=5,
                             style=me.Style(width="100%"),
-                            value=page_state.edit_prompt_placeholder,
+                            value=page_state.prompt_placeholder,
                         )
                         with me.box(
                             style=me.Style(
@@ -205,6 +208,7 @@ def content() -> None:
                                     disabled=page_state.mask_mode_disabled,
                                     on_selection_change=on_selection_change_mask_mode,
                                     value=page_state.mask_mode,
+                                    placeholder=page_state.mask_mode_placeholder,
                                 )
                             # Editing mode
                             with me.tooltip(
@@ -214,8 +218,9 @@ def content() -> None:
                                     label="Edit mode",
                                     options=constants.EDIT_MODE_OPTIONS,
                                     key="edit_mode",
-                                    on_selection_change=on_selection_change_state,
+                                    on_selection_change=on_selection_change_edit_mode,
                                     value=page_state.edit_mode,
+                                    placeholder=page_state.edit_mode_placeholder,
                                 )
                             if (
                                 page_state.edit_mode == "EDIT_MODE_OUTPAINT"
@@ -289,12 +294,6 @@ def on_click_clear_images(event: me.ClickEvent) -> None:
     state.edit_target_width = ""
 
 
-def on_blur_image_edit_prompt(event: me.InputBlurEvent) -> None:
-    """handle image editing prompt"""
-    state = me.state(EditImagesPageState)
-    state.edit_prompt_placeholder = event.value
-
-
 async def on_upload(event: me.UploadEvent) -> None:
     """Upload image to GCS.
 
@@ -332,7 +331,7 @@ async def on_upload(event: me.UploadEvent) -> None:
         logging.exception("Something went wrong uploading image: %s", e)
 
 
-def on_selection_change_state(
+def on_selection_change_edit_mode(
     event: me.SelectSelectionChangeEvent,
 ) -> Generator[Any, Any, Any]:
     """Change Event For Selecting an Image Model."""
@@ -341,8 +340,12 @@ def on_selection_change_state(
     if state.edit_mode == "EDIT_MODE_OUTPAINT":
         state.mask_mode = "user_provided"
         state.mask_mode_disabled = True
+    elif state.edit_mode == "EDIT_MODE_BGSWAP":
+        state.mask_mode = "background"
+        state.mask_mode_disabled = True
     else:
         state.mask_mode_disabled = False
+        state.mask_mode = "foreground"
     yield
 
 
@@ -383,7 +386,7 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
     """Event for image editing."""
     payload = {
         "image_uri": state.upload_uri,
-        "prompt": state.edit_prompt_placeholder,
+        "prompt": state.prompt_input,
         "number_of_images": 1,
         "edit_mode": state.edit_mode,
         "mask_mode": state.mask_mode,

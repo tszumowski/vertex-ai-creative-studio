@@ -6,6 +6,7 @@ import abc
 from typing import Any
 
 from absl import logging
+from common.clients import firestore_client_lib
 
 
 class BaseWorker(abc.ABC):
@@ -19,6 +20,7 @@ class BaseWorker(abc.ABC):
           feed_config: An instance of FeedConfig.
         """
         self.settings = settings
+        self.firestore_client = firestore_client_lib.FirestoreClient()
         self._error_msg = ""
         self._warning_msg = ""
         logging.info("Initialized worker: %s.", self.name)

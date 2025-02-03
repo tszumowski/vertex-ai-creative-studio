@@ -328,7 +328,9 @@ def content(app_state: me.state) -> None:
                                 # Generated images row
                                 with me.box(
                                     style=me.Style(
-                                        flex_wrap="wrap", display="flex", gap="15px"
+                                        flex_wrap="wrap",
+                                        display="flex",
+                                        gap="15px",
                                     ),
                                 ):
                                     for _, img in enumerate(page_state.image_uris):
@@ -392,7 +394,7 @@ def content(app_state: me.state) -> None:
                                     justify_content="space-between",
                                     gap=2,
                                     width="100%",
-                                )
+                                ),
                             ):
                                 with me.box(
                                     style=me.Style(
@@ -401,7 +403,7 @@ def content(app_state: me.state) -> None:
                                         flex_direction="row",
                                         # width="85%",
                                         padding=me.Padding.all(10),
-                                    )
+                                    ),
                                 ):
                                     me.icon("assistant")
                                     me.text(
