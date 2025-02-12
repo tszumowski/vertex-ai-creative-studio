@@ -18,6 +18,11 @@ VIDEO_GENERATION_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{VIDEO_GENERATION_MODEL}"
 )
+IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
+SEGMENTATION_ENDPOINT = (
+    "projects/{project_id}/locations/{region}/"
+    f"publishers/google/models/{IMAGE_SEGMENTATION_MODEL}"
+)
 
 
 class AIPlatformClientError(Exception):

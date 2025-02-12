@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -24,3 +26,11 @@ class UploadFileRequest(BaseModel):
 
 class UploadFileResponse(BaseModel):
     file_uri: str
+
+
+class SearchFileRequest(BaseModel):
+    search_text: str
+
+
+class SearchFileResponse(BaseModel):
+    results: list[dict[str, Any]] = []

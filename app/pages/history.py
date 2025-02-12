@@ -1,43 +1,40 @@
 from __future__ import annotations
 
-from dataclasses import field
+import json
+from typing import TYPE_CHECKING, Any
 
 import mesop as me
+from absl import logging
 from config import config_lib
+from pydantic.dataclasses import dataclass
 from state import state
+from utils import auth_request
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 config = config_lib.AppConfig()
 
-_BOX_STYLE = me.Style(
-    flex_basis="max(480px, calc(50% - 48px))",
-    background=me.theme_var("background"),
-    border_radius=12,
-    box_shadow=("0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f"),
-    padding=me.Padding(top=16, left=16, right=16, bottom=16),
-    display="flex",
-    flex_direction="column",
-    width="100%",
-)
 
-TEST_IMAGE_URIS = [
-    "https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg",
-    "https://interactive-examples.mdn.mozilla.net/media/cc0-images/grapefruit-slice-332-332.jpg",
-]
+@dataclass
+class SearchResults:
+    vector_distance: float
+    worker: str
+    media_uri: str
+    generation_params: dict[str, Any]
 
 
 @me.stateclass
 class HistoryPageState:
     """Local Page State"""
 
-    show_advanced: bool = False
-    temp_name: str = ""
     is_loading: bool = False
-    image_uris: list[str] = field(default_factory=list)
+    image_results: str = ""
 
     input: str = ""
 
 
-def content(app_state=me.state) -> None:
+def content(app_state: me.state) -> None:
     app_state = me.state(state.AppState)
     page_state = me.state(HistoryPageState)
 
@@ -73,23 +70,65 @@ def content(app_state=me.state) -> None:
             display="flex",
             flex_wrap="wrap",
             flex_direction="row",
-            gap="10px",
+            gap=15,
         ),
     ):
-        if page_state.image_uris:
-            render_images()
+        if page_state.image_results:
+            for idx, result in enumerate(json.loads(page_state.image_results)):
+                media_uri = result.get("media_uri")
+                media_url = media_uri.replace(
+                    "gs://",
+                    "https://storage.mtls.cloud.google.com/",
+                )
+                with me.card(
+                    appearance="outlined",
+                    style=me.Style(
+                        width="330px",
+                    ),
+                ):
+                    me.image(
+                        src=f"{media_url}",
+                        style=me.Style(
+                            width="300px",
+                            margin=me.Margin(top=10),
+                            border_radius="35px",
+                        ),
+                    )
+                    with me.card_content():
+                        del result["media_uri"]
+                        me.markdown(
+                            text=format_dict_to_text_nested(result),
+                            style=me.Style(text_align="left"),
+                        )
+
+                    with me.card_actions(align="end"):
+                        me.button(
+                            label="Download",
+                            on_click=on_click_download,
+                            key=f"download_{idx}",
+                        )
+                        me.button(
+                            label="Edit", key=f"edit_{idx}", on_click=on_click_edit
+                        )
 
 
-def render_images(image_uris: list[str] | None = TEST_IMAGE_URIS):
-    elements = []
-    for image_uri in image_uris:
-        elements.append(
-            me.image(
-                src=image_uri,
-                alt="Grapefruit",
-                style=me.Style(width="100%"),
-            ),
-        )
+def on_click_edit(event: me.ClickEvent):
+    page_state = me.state(HistoryPageState)
+    img_idx = int(event.key.split("_")[1])
+    result = json.loads(page_state.image_results)[img_idx]
+    media_uri = result.get("media_uri")
+    me.navigate("/edit", query_params={"upload_uri": media_uri})
+
+
+def on_click_download(event: me.ClickEvent):
+    page_state = me.state(HistoryPageState)
+    img_idx = int(event.key.split("_")[1])
+    result = json.loads(page_state.image_results)[img_idx]
+    target = result.get("media_uri").replace(
+        "gs://",
+        "https://storage.mtls.cloud.google.com/",
+    )
+    me.navigate(target)
 
 
 def get_logo(state: state.AppState) -> str:
@@ -98,12 +137,58 @@ def get_logo(state: state.AppState) -> str:
     return "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png"
 
 
-def on_blur(e: me.InputBlurEvent) -> None:
+def on_blur(event: me.InputBlurEvent) -> None:
     state = me.state(HistoryPageState)
-    state.input = e.value
+    state.input = ""
+    state.input = event.value
 
 
-def on_enter(e: me.InputEnterEvent) -> None:
+async def send_image_search_request(state: HistoryPageState) -> list[str]:
+    payload = {
+        "search_text": state.input,
+    }
+    logging.info("Making request with payload %s", payload)
+    response = await auth_request.make_authenticated_request(
+        method="POST",
+        url=f"{config.api_gateway_url}/files/search",
+        json_data=payload,
+        service_url=config.api_gateway_url,
+    )
+    try:
+        results = await response.json()
+        logging.info(results)
+        return results
+    except Exception as e:
+        logging.exception("Something went wrong generating images: %s", e)
+
+
+async def on_enter(event: me.InputEnterEvent) -> AsyncGenerator[Any, Any, Any]:
     state = me.state(HistoryPageState)
+    state.input = event.value
+    state.is_loading = True
+    state.image_results = ""
+    yield
+    results = await send_image_search_request(state)
+    state.image_results = json.dumps(results)
+    state.is_loading = False
+    yield
 
-    # Make request to search images.
+
+def format_nested_dict(input_dict):
+    formatted_lines = []
+    for key, value in input_dict.items():
+        key_str = str(key)
+        if isinstance(value, dict):
+            formatted_lines.append(f"*{key_str}*\n")  # Indent nested keys
+            formatted_lines.extend(
+                format_nested_dict(value),
+            )  # Recurse for nested dicts
+        else:
+            if key == "vector_distance":
+                value = round(value, 3)
+            formatted_lines.append(f"**{key_str}**: {str(value)} \n")
+    return formatted_lines
+
+
+def format_dict_to_text_nested(input_dict):
+    return "\n".join(format_nested_dict(input_dict))

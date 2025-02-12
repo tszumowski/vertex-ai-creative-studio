@@ -29,12 +29,14 @@ class GenMedia:
 
     def _generate_metadata(self) -> None:
         vertexai_client = vertexai_client_lib.VertexAIClient()
-        image_embeddings, prompt_embeddings = vertexai_client.get_embeddings_for_image(
+        image_embeddings, prompt_embeddings = vertexai_client.get_embeddings(
             self.media_uri,
             self.generation_params.get("prompt"),
         )
-        self.image_embeddings = Vector(image_embeddings)
-        self.prompt_embeddings = Vector(prompt_embeddings)
+        if image_embeddings:
+            self.image_embeddings = Vector(image_embeddings)
+        if prompt_embeddings:
+            self.prompt_embeddings = Vector(prompt_embeddings)
 
     def to_dict(self) -> dict[str, Any]:
         return self.__dict__

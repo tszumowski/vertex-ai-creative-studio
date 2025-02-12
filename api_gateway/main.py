@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import google.cloud.logging
 from absl import logging
@@ -90,6 +91,22 @@ async def edit_image(request: Request) -> str:
     return data.get("edited_image_uri")
 
 
+@app.post("/editing/segment_image")
+async def segment_image(request: Request) -> dict[str, str]:
+    """Exposes the image editing endpoint through the API Gateway."""
+    logging.info("API Gateway: Received request: %s", request)
+    data = await request.json()
+    response = await api_utils.make_authenticated_request_with_handled_exception(
+        method="POST",
+        url=f"{_GENERATION_SERVICE_URL}/segment_image",
+        json_data=data,
+        service_url=_GENERATION_SERVICE_URL,
+    )
+    logging.info("API Gateway: Received response: %s", await response.json())
+    data = await response.json()
+    return data.get("mask")
+
+
 @app.post("/editing/upscale_image")
 async def upscale_image(request: Request) -> str:
     """Exposes the image upscaling endpoint through the API Gateway."""
@@ -136,3 +153,19 @@ async def upload(request: Request) -> str:
     logging.info("API Gateway: Received response: %s", await response.json())
     data = await response.json()
     return data.get("file_uri")
+
+
+@app.post("/files/search")
+async def search(request: Request) -> list[dict[str, Any]]:
+    """Exposes the file search endpoint through the API Gateway."""
+    logging.info("API Gateway: Received request: %s", request)
+    data = await request.json()
+    response = await api_utils.make_authenticated_request_with_handled_exception(
+        method="POST",
+        url=f"{_FILE_SERVICE_URL}/search",
+        json_data=data,
+        service_url=_FILE_SERVICE_URL,
+    )
+    logging.info("API Gateway: Received response: %s", await response.json())
+    data = await response.json()
+    return data.get("results")

@@ -46,6 +46,7 @@ def generate_images_page() -> None:
         dangerously_disable_trusted_types=True,
         allowed_connect_srcs="https://apis.google.com",
         allowed_iframe_parents=["https://google.github.io"],
+        allowed_script_srcs=["https://cdn.jsdelivr.net"],
     ),
 )
 def edit_images_page() -> None:
@@ -62,13 +63,14 @@ def edit_images_page() -> None:
         dangerously_disable_trusted_types=True,
         allowed_connect_srcs="https://apis.google.com",
         allowed_iframe_parents=["https://google.github.io"],
+        allowed_script_srcs=["https://cdn.jsdelivr.net"],
     ),
 )
 def history_page() -> None:
     """Main Page"""
     app_state = me.state(AppState)
     with page_scaffold():  # pylint: disable=not-context-manager
-        history.content(app_state)
+        history.content(app_state=app_state)
 
 
 @me.page(
@@ -84,4 +86,4 @@ def settings_page() -> None:
     """Main Page"""
     app_state = me.state(AppState)
     with page_scaffold():  # pylint: disable=not-context-manager
-        settings.content(app_state)
+        settings.content(app_state=app_state)

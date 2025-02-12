@@ -6,10 +6,12 @@ from absl import logging
 from models import (
     DownloadFileRequest,
     DownloadFileResponse,
+    SearchFileRequest,
+    SearchFileResponse,
     UploadFileRequest,
     UploadFileResponse,
 )
-from worker import DownloadWorker, UploadWorker
+from worker import DownloadWorker, SearchWorker, UploadWorker
 
 from common.clients import storage_client_lib
 
@@ -47,6 +49,24 @@ def upload(request: UploadFileRequest) -> UploadFileResponse:
     except storage_client_lib.StorageClientError as err:
         logging.error(
             "FileServiceWorker: An error occured trying to upload file %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", str(err)),
+        ) from err
+
+
+@app.post("/search")
+def search(request: SearchFileRequest) -> SearchFileResponse:
+    try:
+        kwargs = request.dict()
+        worker = SearchWorker(settings=None)
+        results = worker.execute(**kwargs)
+        return {"results": results}
+    except storage_client_lib.StorageClientError as err:
+        logging.error(
+            "SearchWorker: An error occured searching for file %s",
             err,
         )
         raise fastapi.HTTPException(

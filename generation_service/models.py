@@ -13,6 +13,7 @@ class ImageGenerationRequest(BaseModel):
     aspect_ratio: str | None = "1:1"
     add_watermark: bool | None = True
     language: str | None = "auto"
+    reference_images: dict[str, dict[str, str]] | None = None
 
 
 class ImageGenerationResponse(BaseModel):
@@ -34,8 +35,7 @@ class EditImageRequest(BaseModel):
     number_of_images: int = 1
     edit_mode: str = ""
     mask_mode: str = "foreground"
-    segmentation_classes: list[str] = []
-    target_size: tuple[int, int] | None = None
+    mask_uri: str = ""
 
 
 class EditImageResponse(BaseModel):
@@ -62,3 +62,16 @@ class ImageUpscalingRequest(BaseModel):
 
 class ImageUpscalingResponse(BaseModel):
     upscaled_image_uri: str
+
+
+class ImageSegmentationRequest(BaseModel):
+    image_uri: str
+    mode: str = "foreground"
+    prompt: str | None = None
+    target_size: tuple[int, int] | None = None
+    horizontal_alignment: str | None = None
+    vertical_alignment: str | None = None
+
+
+class ImageSegmentationResponse(BaseModel):
+    mask: dict[str, str]

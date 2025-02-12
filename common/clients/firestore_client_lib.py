@@ -106,11 +106,16 @@ class FirestoreClient:
             logging.exception("Error deleting document: %s", e)
             raise
 
-    def nn_search(self, embedding: list[float]) -> list[dict[str, Any]]:
+    def nn_search(
+        self,
+        embedding: list[float],
+        max_distance: float | None = 0.75,
+    ) -> list[dict[str, Any]]:
         """Runs a nearest neigbor search against image embeddings in the collection.
 
         Args:
             embedding: The embedding to search nearest neighbors for.
+            min_similarity: (Optional) The mininum cosine similarity.
 
         Returns:
             A list of nearst neigbors and their distance.
@@ -118,18 +123,24 @@ class FirestoreClient:
         vector_query = self.db.collection(self.collection_name).find_nearest(
             vector_field="image_embeddings",
             query_vector=Vector(embedding),
-            distance_measure=DistanceMeasure.DOT_PRODUCT,
-            limit=5,
+            distance_measure=DistanceMeasure.COSINE,
+            limit=50,
             distance_result_field="vector_distance",
         )
         docs = vector_query.stream()
         results = []
         for doc in docs:
-            result = {}
-            result["doc_id"] = doc.id
-            result["distance"] = doc.get("vector_distance")
-            results.append(result)
-        return results
+            result = doc.to_dict()
+            logging.info("FirestoreClient: Got result: %s", result)
+            # Remove embeddings from response, since they are
+            # large and aren't used after ANN search.
+            keys_to_remove = [key for key in result if "embedding" in key]
+            for key in keys_to_remove:
+                del result[key]
+            if result.get("vector_distance") < max_distance:
+                results.append(result)
+        logging.info("FirestoreClient: Got results: %s", results)
+        return sorted(results, key=lambda item: item["vector_distance"])
 
     def query(
         self,

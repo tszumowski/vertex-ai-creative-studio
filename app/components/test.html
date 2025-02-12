@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Masker Test</title>
+  <script type="module" src="./image_masker_component.js"></script>
+</head>
+<body>
+  <image-masker-component img_src="https://storage.googleapis.com/cse-sds-solution-demos-genmedia/1730812186168/sample_0.png" maskChangeEvent="test-event"></image-masker-component>
+    <script>
+      document.addEventListener('test-event', (event) => {
+        console.log('Mask Change Event:', event.detail.mask);
+      })
+    </script>
+</body>
+</html>

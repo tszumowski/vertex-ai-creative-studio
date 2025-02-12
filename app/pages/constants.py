@@ -7,6 +7,26 @@ NUMBER_OF_IMAGES_OPTIONS = [
     me.SelectOption(label="4", value="4"),
 ]
 
+ASPECT_RATIO_RADIO_OPTIONS = [
+    me.RadioOption(label="1:1", value="1:1"),
+    me.RadioOption(label="16:9", value="16:9"),
+    me.RadioOption(label="9:16", value="9:16"),
+    me.RadioOption(label="4:3", value="4:3"),
+    me.RadioOption(label="3:4", value="3:4"),
+]
+
+HORIZONTAL_ALIGNMENT_RADIO_OPTIONS = [
+    me.RadioOption(label="Left", value="left"),
+    me.RadioOption(label="Center", value="center"),
+    me.RadioOption(label="Right", value="right"),
+]
+
+VERTICAL_ALIGNMENT_RADIO_OPTIONS = [
+    me.RadioOption(label="Bottom", value="bottom"),
+    me.RadioOption(label="Center", value="center"),
+    me.RadioOption(label="Top", value="top"),
+]
+
 MASK_MODE_OPTIONS = [
     me.SelectOption(
         label="Foreground",
@@ -20,31 +40,39 @@ MASK_MODE_OPTIONS = [
         label="Semantic",
         value="semantic",
     ),
+    me.SelectOption(
+        label="Descriptive",
+        value="prompt",
+    ),
 ]
 
 EDIT_MODE_OPTIONS = [
     me.SelectOption(
-        label="Outpainting",
-        value="EDIT_MODE_OUTPAINT",
-    ),
-    me.SelectOption(
-        label="Inpainting insert",
+        label="Insert - Add a new object",
         value="EDIT_MODE_INPAINT_INSERTION",
     ),
     me.SelectOption(
-        label="Inpainting removal",
+        label="Remove - Erase selected object(s)",
         value="EDIT_MODE_INPAINT_REMOVAL",
     ),
     # Not available, yet.
     # me.SelectOption(
-    #    label="Product image",
+    #    label="Product showcase - Place a product in a new scene",
     #    value="EDIT_MODE_PRODUCT_IMAGE",
     # ),
     #
     me.SelectOption(
-        label="Background swap",
+        label="Change the background.",
         value="EDIT_MODE_BGSWAP",
     ),
+    me.SelectOption(
+        label="Outpainting - Extend the image",
+        value="EDIT_MODE_OUTPAINT",
+    ),
+    # me.SelectOption(
+    #    label="Controlled editing",
+    #    value="EDIT_MODE_CONTROLLED_EDITING",
+    # ),
 ]
 
 COMPOSITION_OPTIONS = [
@@ -373,4 +401,27 @@ SEMANTIC_TYPES = [
     me.SelectOption(label="Whiteboard", value="whiteboard"),
     me.SelectOption(label="Window", value="window"),
     me.SelectOption(label="Zebra", value="zebra"),
+]
+
+REFERENCE_TYPES_OPTIONS = [
+    me.ButtonToggleButton(
+        label="Person",
+        value="person",
+    ),
+    me.ButtonToggleButton(
+        label="Animal",
+        value="animal",
+    ),
+    me.ButtonToggleButton(
+        label="Product",
+        value="product",
+    ),
+    me.ButtonToggleButton(
+        label="Style",
+        value="style",
+    ),
+    me.ButtonToggleButton(
+        label="Default",
+        value="default",
+    ),
 ]

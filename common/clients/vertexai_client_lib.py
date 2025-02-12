@@ -8,6 +8,7 @@ import mimetypes
 import os
 from typing import Literal, cast
 
+import cv2
 import vertexai
 from absl import logging
 from vertexai.generative_models import (
@@ -19,11 +20,17 @@ from vertexai.generative_models import (
     Part,
 )
 from vertexai.preview.vision_models import (
+    ControlReferenceImage,
     Image,
     ImageGenerationModel,
+    ImageSegmentationModel,
     MaskReferenceImage,
     MultiModalEmbeddingModel,
     RawReferenceImage,
+    ReferenceImage,
+    StyleReferenceImage,
+    Scribble,
+    SubjectReferenceImage,
 )
 
 from common import image_utils
@@ -80,6 +87,31 @@ class EditMode(enum.Enum):
     EDIT_MODE_INPAINT_REMOVAL = "inpainting-remove"
     EDIT_MODE_PRODUCT_IMAGE = "product-image"
     EDIT_MODE_BGSWAP = "background-swap"
+    EDIT_MODE_CONTROLLED_EDITING = "controlled-editing"
+
+
+SUBJECT_TYPE_MATCHING = {
+    "person": {
+        "reference_type": "REFERENCE_TYPE_SUBJECT",
+        "subject_type": "SUBJECT_TYPE_PERSON",
+    },
+    "anmial": {
+        "reference_type": "REFERENCE_TYPE_SUBJECT",
+        "subject_type": "SUBJECT_TYPE_ANIMAL",
+    },
+    "product": {
+        "reference_type": "REFERENCE_TYPE_SUBJECT",
+        "subject_type": "SUBJECT_TYPE_PRODUCT",
+    },
+    "style": {
+        "reference_type": "REFERENCE_TYPE_STYLE",
+        "subject_type": "",
+    },
+    "default": {
+        "reference_type": "REFERENCE_TYPE_SUBJECT",
+        "subject_type": "SUBJECT_TYPE_DEFAULT",
+    },
+}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -166,6 +198,7 @@ class VertexAIClient:
         num_images: int,
         language: str,
         negative_prompt: str,
+        reference_images: dict[str, dict[str, str]],
     ) -> list[str]:
         """Generates a set of images.
 
@@ -177,6 +210,7 @@ class VertexAIClient:
             num_images: The number of images to generate.
             language: The language.
             negative_prompt: The negative prompt.
+            reference_images: A dict of reference images including type.
 
         Returns:
             A list of GCS uris.
@@ -187,9 +221,29 @@ class VertexAIClient:
         image_generation_model = ImageGenerationModel.from_pretrained(
             model,
         )
+        reference_images = []
+        if reference_images:
+            for idx, ref in reference_images.items():
+                ref_img = None
+                if ref["reference_type"] in ("default", "person", "animal", "product"):
+                    ref_img = SubjectReferenceImage(
+                        reference_id=idx,
+                        image=Image(
+                            gcs_uri=ref["reference_image_uri"],
+                        ),
+                        subject_type=ref["reference_type"],
+                    )
+                if ref["reference_type"] == "style":
+                    ref_img = StyleReferenceImage(
+                        reference_id=idx,
+                        image=Image(
+                            gcs_uri=ref["reference_image_uri"],
+                        ),
+                    )
+                reference_images.append(ref_img)
         try:
             generated_images_uris = []
-            response = image_generation_model.generate_images(
+            response = image_generation_model._generate_images(
                 prompt=prompt,
                 add_watermark=add_watermark,
                 aspect_ratio=aspect_ratio,
@@ -197,6 +251,7 @@ class VertexAIClient:
                 output_gcs_uri=f"{self.bucket_uri}/generated",
                 language=language,
                 negative_prompt=negative_prompt,
+                reference_images=reference_images,
             )
 
             for index, image in enumerate(response.images):
@@ -255,8 +310,8 @@ class VertexAIClient:
         number_of_images: int = 1,
         edit_mode: str = "",
         mask_mode: str = "foreground",
-        segmentation_classes: list[str] | None = None,
         target_size: tuple[str, str] | None = None,
+        mask_uri: str | None = None,
     ) -> str:
         """Edits and image.
 
@@ -266,8 +321,8 @@ class VertexAIClient:
             number_of_images: Number of images to create after edits. Defaults to 1.
             edit_mode: The edit mode for editing. Defaults to "".
             mask_mode: The area to edit. Defaults to "foreground".
-            segmentation_classes: (Optional) The objects to identify during masking.
             target_size: (Optional) The height and width of the target image.
+            mask_uri: The URI of the image mask.
 
         Returns:
             The edited image URI.
@@ -277,62 +332,69 @@ class VertexAIClient:
         """
         try:
             edit_model = ImageGenerationModel.from_pretrained(IMAGEN_EDIT_MODEL)
-            image_uri_parts = image_uri.split("/")
-            bucket_name = image_uri_parts[2]
-            file_name = os.path.basename(image_uri)
-            file, extension = os.path.splitext(file_name)
-            edited_file_name = f"{file}-edited{extension}"
+            bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
+            edited_file_name = f"{file_name}-edited{extension}"
 
             image = Image(gcs_uri=image_uri)
+            mask = Image(gcs_uri=mask_uri) if mask_uri else None
             seed = None
             if edit_mode == EditMode.EDIT_MODE_OUTPAINT.name:
-                # To use the outpainting feature, we must create an image mask and
-                # prepare the original image by padding some empty space around it.
-                image_pil_outpaint, mask_pil_outpaint = image_utils.pad_image_and_mask(
-                    image,
-                    target_size,
-                    0,
-                    0,
-                )
                 raw_ref_image = RawReferenceImage(
-                    image=image_utils.get_bytes_from_pil(image_pil_outpaint),
+                    image=image,
                     reference_id=0,
                 )
                 mask_ref_image = MaskReferenceImage(
                     reference_id=1,
-                    image=image_utils.get_bytes_from_pil(mask_pil_outpaint),
+                    image=mask,
                     mask_mode="user_provided",
                     dilation=0.03,
                 )
+                reference_images = [raw_ref_image, mask_ref_image]
             if edit_mode == EditMode.EDIT_MODE_BGSWAP.name:
                 raw_ref_image = RawReferenceImage(image=image, reference_id=0)
                 mask_ref_image = MaskReferenceImage(
                     reference_id=1,
-                    image=None,
+                    image=mask,
                     mask_mode="background",
                 )
                 seed = 1
+                reference_images = [raw_ref_image, mask_ref_image]
             if edit_mode in (
                 EditMode.EDIT_MODE_INPAINT_INSERTION.name,
                 EditMode.EDIT_MODE_INPAINT_REMOVAL.name,
             ):
                 raw_ref_image = RawReferenceImage(image=image, reference_id=0)
-                segmentation_ids = None
-                if segmentation_classes:
-                    segmentation_ids = [
-                        SemanticType[name].value for name in segmentation_classes
-                    ]
                 mask_ref_image = MaskReferenceImage(
                     reference_id=1,
-                    image=None,
+                    image=mask,
                     mask_mode=mask_mode,
                     dilation=0.1,
-                    segmentation_classes=segmentation_ids,
                 )
+                reference_images = [raw_ref_image, mask_ref_image]
+
+            if edit_mode == EditMode.EDIT_MODE_CONTROLLED_EDITING.name:
+                ext = mimetypes.guess_all_extensions(image._mime_type)
+                tmp_image_file = f"/tmp/canny{ext}"
+                image.save(tmp_image_file)
+                img = cv2.imread(tmp_image_file)
+                # Setting parameter values
+                t_lower = 100  # Lower Threshold
+                t_upper = 150  # Upper threshold
+                # Applying the Canny Edge filter
+                tmp_edge_file = f"/tmp/canny_edge{ext}"
+                edge = cv2.Canny(img, t_lower, t_upper)
+                cv2.imwrite(tmp_edge_file, edge)
+                control_image = ControlReferenceImage(
+                    reference_id=1,
+                    image=Image.load_from_file(location=tmp_edge_file),
+                    control_type="canny",
+                )
+                reference_images = [control_image]
+
             edited_image = edit_model.edit_image(
                 prompt=prompt,
                 edit_mode=EditMode[edit_mode].value,
-                reference_images=[raw_ref_image, mask_ref_image],
+                reference_images=reference_images,
                 number_of_images=number_of_images,
                 safety_filter_level="block_few",
                 person_generation="allow_adult",
@@ -390,12 +452,8 @@ class VertexAIClient:
                 output_mime_type=output_mime_type,
                 output_compression_quality=output_compression_quality,
             )
-            image_uri_parts = image_uri.split("/")
-            bucket_name = image_uri_parts[2]
-            file_name = os.path.basename(image_uri)
-            file, _ = os.path.splitext(file_name)
-            extension = mimetypes.guess_all_extensions(output_mime_type)[0]
-            upscaled_file_name = f"{file}-upscaled{extension}"
+            bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
+            upscaled_file_name = f"{file_name}-upscaled{extension}"
             upscaled_file_uri = self.storage_client.upload(
                 bucket_name=bucket_name,
                 contents=upscaled_image._as_base64_string(),
@@ -410,19 +468,153 @@ class VertexAIClient:
             ) from ex
         return upscaled_file_uri
 
-    def get_embeddings_for_image(
+    def get_embeddings(
         self,
-        image_uri: str,
-        prompt: str | None = None,
+        image_uri: str | None = None,
+        text: str | None = None,
     ) -> tuple[float, float]:
         embedding_model = MultiModalEmbeddingModel.from_pretrained(
             MULTIMODAL_EMBEDDING_MODEL,
         )
-        image = Image.load_from_file(image_uri)
+        text = text if text else None  # Ensure text is not "".
+        image = None
+        if image_uri:
+            image = Image.load_from_file(image_uri)
 
         embeddings = embedding_model.get_embeddings(
             image=image,
-            contextual_text=prompt,
+            contextual_text=text,
             dimension=EMBEDDING_DIMENSIONS,
         )
         return embeddings.image_embedding, embeddings.text_embedding
+
+    def outpaint_image(
+        self,
+        image_uri: str,
+        target_size: tuple[int, int] = (1024, 1024),
+        horizontal_alignment: str = "center",
+        vertical_alignment: str = "center",
+    ) -> dict[str, str]:
+        image = Image(gcs_uri=image_uri)
+        new_w, new_h = target_size
+        if vertical_alignment == "top":
+            vertical_offset_ratio = -1
+        elif vertical_alignment == "center":
+            vertical_offset_ratio = 0
+        elif vertical_alignment == "bottom":
+            vertical_offset_ratio = 1
+
+        if horizontal_alignment == "left":
+            horizontal_offset_ratio = -1
+        elif horizontal_alignment == "center":
+            horizontal_offset_ratio = 0
+        elif horizontal_alignment == "right":
+            horizontal_offset_ratio = 1
+        image_pil, mask_pil = image_utils.pad_image_and_mask(
+            image,
+            target_size=(new_w, new_h),
+            vertical_offset_ratio=vertical_offset_ratio,
+            horizontal_offset_ratio=horizontal_offset_ratio,
+        )
+        new_image = Image(image_utils.get_bytes_from_pil(image_pil))
+        bucket_name, file_name, _ = get_bucket_and_file_name(image_uri)
+        new_image_ext = mimetypes.guess_all_extensions(new_image._mime_type)[0]
+        new_image_file_name = f"{file_name}-outpaint{new_image_ext}"
+        new_image_uri = self.storage_client.upload(
+            bucket_name=bucket_name,
+            contents=new_image._as_base64_string(),
+            mime_type=new_image._mime_type,
+            file_name=new_image_file_name,
+            sub_dir="outpainted",
+        )
+
+        new_mask = Image(image_utils.get_bytes_from_pil(mask_pil))
+        bucket_name, file_name, _ = get_bucket_and_file_name(image_uri)
+        new_mask_ext = mimetypes.guess_all_extensions(new_mask._mime_type)[0]
+        new_mask_file_name = f"{file_name}-mask{new_mask_ext}"
+        new_mask_uri = self.storage_client.upload(
+            bucket_name=bucket_name,
+            contents=new_mask._as_base64_string(),
+            mime_type=new_mask._mime_type,
+            file_name=new_mask_file_name,
+            sub_dir="masks",
+        )
+        overlay = image_utils.overlay_mask(
+            new_image,
+            new_mask,
+        )
+        overlay_ext = mimetypes.guess_all_extensions(overlay._mime_type)[0]
+        overlay_file_name = f"{file_name}-overlay{overlay_ext}"
+        overlay_file_uri = self.storage_client.upload(
+            bucket_name=bucket_name,
+            contents=overlay._as_base64_string(),
+            mime_type=overlay._mime_type,
+            file_name=overlay_file_name,
+            sub_dir="overlays",
+        )
+        return {
+            "image_uri": new_image_uri,
+            "mask_uri": new_mask_uri,
+            "overlay_uri": overlay_file_uri,
+        }
+
+    def segment_image(
+        self,
+        image_uri: str,
+        mode: str = "foreground",
+        prompt: str | None = None,
+        scribble: Scribble | None = None,
+        target_size: tuple[int, int] | None = None,
+        horizontal_alignment: str | None = None,
+        vertical_alignment: str | None = None,
+    ) -> dict[str, str]:
+        if mode == "user_provided":
+            return self.outpaint_image(
+                image_uri,
+                target_size=target_size,
+                horizontal_alignment=horizontal_alignment,
+                vertical_alignment=vertical_alignment,
+            )
+        segmentation_model = ImageSegmentationModel.from_pretrained(
+            IMAGE_SEGMENTATION_MODEL,
+        )
+        base_image = Image.load_from_file(image_uri)
+        segmented_image = segmentation_model.segment_image(
+            base_image=base_image,
+            prompt=prompt if prompt else None,
+            scribble=scribble,
+            mode=mode,
+        )
+        segmented_image_mime_type = segmented_image.masks[0]._mime_type
+        bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
+        extension = mimetypes.guess_all_extensions(segmented_image_mime_type)[0]
+        mask_file_name = f"{file_name}-mask{extension}"
+
+        mask_file_uri = self.storage_client.upload(
+            bucket_name=bucket_name,
+            contents=segmented_image.masks[0]._as_base64_string(),
+            mime_type=segmented_image.masks[0]._mime_type,
+            file_name=mask_file_name,
+            sub_dir="masks",
+        )
+        overlay = image_utils.overlay_mask(
+            base_image,
+            segmented_image.masks[0],
+        )
+        overlay_file_name = f"{file_name}-overlay{extension}"
+        overlay_file_uri = self.storage_client.upload(
+            bucket_name=bucket_name,
+            contents=overlay._as_base64_string(),
+            mime_type=overlay._mime_type,
+            file_name=overlay_file_name,
+            sub_dir="overlays",
+        )
+        return {"mask_uri": mask_file_uri, "overlay_uri": overlay_file_uri}
+
+
+def get_bucket_and_file_name(file_uri: str) -> tuple[str, str, str]:
+    image_uri_parts = file_uri.split("/")
+    bucket_name = image_uri_parts[2]
+    base_name = os.path.basename(file_uri)
+    file_name, extension = os.path.splitext(base_name)
+    return bucket_name, file_name, extension

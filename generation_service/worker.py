@@ -69,3 +69,14 @@ class VideoGenerationServiceWorker(base_worker.BaseWorker):
         genmedia = GenMedia(video_uri, worker=self.name, **kwargs)
         self.firestore_client.create(data=genmedia.to_dict())
         return video_uri
+
+
+class ImageSegmentationServiceWorker(base_worker.BaseWorker):
+    """Processes an image segmentation request."""
+
+    def execute(self, **kwargs: dict[str, Any]) -> dict[str, str]:
+        """Execute the Image segmentation process."""
+        client = vertexai_client_lib.VertexAIClient()
+        mask = client.segment_image(**kwargs)
+        # Add other tasks e.g. persiting to database here.
+        return mask

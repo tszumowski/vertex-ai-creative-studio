@@ -7,6 +7,42 @@ steps:
   args: ['-f', 'docker-compose.yml', 'push']
   env:
     - 'PROJECT_ID=$PROJECT_ID'
+#- name: 'ubuntu'
+#  id: 'create tfvars'
+#  dir: 'terraform'
+#  entrypoint: 'sh'
+#  args:
+#  - '-c'
+#  - |
+#      cat <<EOF > terraform.tfvars
+#      project_id = "$PROJECT_ID"
+#      region = "us-central1"
+#      media_bucket = "$PROJECT_ID-genmedia"
+#      backend_bucket_name = "$PROJECT_ID-tf-state"
+#      generation_service_image_tag = "gcr.io/$PROJECT_ID/creative-studio/generation-service:latest"
+#      api_gateway_image_tag = "gcr.io/$PROJECT_ID/creative-studio/api-gateway:latest"
+#      file_service_image_tag = "gcr.io/$PROJECT_ID/creative-studio/file-service:latest"
+#      app_image = "gcr.io/$PROJECT_ID/creative-studio/app:latest"
+#      EOF
+#- id: 'tf init'
+#  name: 'hashicorp/terraform:1.10.0'
+#  entrypoint: 'sh'
+#  dir: terraform
+#  args:
+#  - '-c'
+#  - |
+#      terraform init \
+#      -get=true \
+#      -upgrade \
+#      -reconfigure
+#- id: 'tf plan'
+#  name: 'hashicorp/terraform:1.10.0'
+#  entrypoint: 'sh'
+#  dir: terraform
+#  args:
+#  - '-c'
+#  - |
+#      terraform apply -var-file="./terraform.tfvars" -auto-approve
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'generation-service'
   entrypoint: 'gcloud'
@@ -22,35 +58,35 @@ steps:
     '--set-env-vars', 'REGION=us-central1',
     '--format', 'value(status.url)',
   ]
-#- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-#  id: 'file-service'
-#  entrypoint: 'gcloud'
-#  args: [
-#    'run',
-#    'deploy',
-#    'file-service',
-#    '--image', 'gcr.io/$PROJECT_ID/creative-studio/file-service:latest',
-#    '--region', 'us-central1',
-#    '--port', '8000',
-#    '--set-env-vars', 'IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia',
-#    '--set-env-vars', 'PROJECT_ID=$PROJECT_ID',
-#    '--set-env-vars', 'REGION=us-central1',
-#    '--format', 'value(status.url)',
-#  ]
-#- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-#  id: 'api-gateway'
-#  entrypoint: 'gcloud'
-#  args: [
-#    'run',
-#    'deploy',
-#    'api-gateway',
-#    '--image', 'gcr.io/$PROJECT_ID/creative-studio/api-gateway:latest',
-#    '--region', 'us-central1',
-#    '--port', '8000',
-#    '--set-env-vars', 'PROJECT_NUMBER=$PROJECT_NUMBER',
-#    '--set-env-vars', 'REGION=us-central1',
-#    '--format', 'value(status.url)',
-#  ]
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'file-service'
+  entrypoint: 'gcloud'
+  args: [
+    'run',
+    'deploy',
+    'file-service',
+    '--image', 'gcr.io/$PROJECT_ID/creative-studio/file-service:latest',
+    '--region', 'us-central1',
+    '--port', '8000',
+    '--set-env-vars', 'IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia',
+    '--set-env-vars', 'PROJECT_ID=$PROJECT_ID',
+    '--set-env-vars', 'REGION=us-central1',
+    '--format', 'value(status.url)',
+  ]
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'api-gateway'
+  entrypoint: 'gcloud'
+  args: [
+    'run',
+    'deploy',
+    'api-gateway',
+    '--image', 'gcr.io/$PROJECT_ID/creative-studio/api-gateway:latest',
+    '--region', 'us-central1',
+    '--port', '8000',
+    '--set-env-vars', 'PROJECT_NUMBER=$PROJECT_NUMBER',
+    '--set-env-vars', 'REGION=us-central1',
+    '--format', 'value(status.url)',
+  ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'app'
   entrypoint: 'gcloud'

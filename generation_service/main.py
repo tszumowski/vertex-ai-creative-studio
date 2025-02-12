@@ -8,6 +8,8 @@ from models import (
     EditImageResponse,
     ImageGenerationRequest,
     ImageGenerationResponse,
+    ImageSegmentationRequest,
+    ImageSegmentationResponse,
     ImageUpscalingRequest,
     ImageUpscalingResponse,
     TextGenerationRequest,
@@ -18,6 +20,7 @@ from models import (
 from worker import (
     ImageEditingServiceWorker,
     ImageGenerationServiceWorker,
+    ImageSegmentationServiceWorker,
     ImageUpscalingServiceWorker,
     TextGenerationServiceWorker,
     VideoGenerationServiceWorker,
@@ -113,6 +116,24 @@ def generate_video(request: VideoGenerationRequest) -> VideoGenerationResponse:
     except aiplatform_client_lib.AIPlatformClientError as err:
         logging.error(
             "VideoGenerationServiceWorker: An error occured trying to generate video: %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", str(err)),
+        ) from err
+
+
+@app.post("/segment_image")
+def segment_image(request: ImageSegmentationRequest) -> ImageSegmentationResponse:
+    try:
+        kwargs = request.dict()
+        worker = ImageSegmentationServiceWorker(settings=None)
+        mask = worker.execute(**kwargs)
+        return {"mask": mask}
+    except vertexai_client_lib.VertexAIClientError as err:
+        logging.error(
+            "ImageSegmentationServiceWorker: An error occured trying to segment image: %s",
             err,
         )
         raise fastapi.HTTPException(

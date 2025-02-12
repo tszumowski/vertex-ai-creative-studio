@@ -11,17 +11,14 @@ def pad_to_target_size(
     vertical_offset_ratio: int = 0,
     horizontal_offset_ratio: int = 0,
     fill_val: int = 255,
-):
+) -> PIL_Image:
     """Pads an image for outpainting."""
     orig_image_size_w, orig_image_size_h = source_image.size
     target_size_w, target_size_h = target_size
-
-    insert_pt_x = (target_size_w - orig_image_size_w) // 2 + int(
-        horizontal_offset_ratio * target_size_w,
-    )
-    insert_pt_y = (target_size_h - orig_image_size_h) // 2 + int(
-        vertical_offset_ratio * target_size_h,
-    )
+    x_pos = (target_size_w - orig_image_size_w) // 2
+    y_pos = (target_size_h - orig_image_size_h) // 2
+    insert_pt_x = x_pos + int(horizontal_offset_ratio * x_pos)
+    insert_pt_y = y_pos + int(vertical_offset_ratio * y_pos)
     insert_pt_x = min(insert_pt_x, target_size_w - orig_image_size_w)
     insert_pt_y = min(insert_pt_y, target_size_h - orig_image_size_h)
 
@@ -45,7 +42,7 @@ def pad_image_and_mask(
     target_size: tuple[int, int] = (1536, 1536),
     vertical_offset_ratio: int = 0,
     horizontal_offset_ratio: int = 0,
-):
+) -> tuple[PIL_Image, PIL_Image]:
     """Pads and resizes image and mask to the same target size."""
     image_vertex = ref_image._pil_image
     mask_vertex = PIL_Image.new("L", ref_image._pil_image.size, 0)
@@ -75,3 +72,29 @@ def get_bytes_from_pil(image: PIL_Image) -> bytes:
     byte_io_png = io.BytesIO()
     image.save(byte_io_png, "PNG")
     return byte_io_png.getvalue()
+
+
+def overlay_mask(
+    image: Image,
+    mask: Image,
+    alpha: float = 0.5,
+) -> Image:
+    """Overlays a mask on an image.  Handles Vertex AI Image objects correctly.
+
+    Args:
+        image: The base image (vertexai.preview.vision_models.Image).
+        mask: The mask image (vertexai.preview.vision_models.Image).
+            Should have the same dimensions as the image.
+        alpha: The transparency of the mask overlay (0.0 to 1.0).
+
+    Returns:
+        A PIL Image object with the mask overlaid, or None if there's an error.
+    """
+    image_bytes = image._image_bytes
+    image_pil = PIL_Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    mask_bytes = mask._image_bytes
+    mask_pil = PIL_Image.open(io.BytesIO(mask_bytes)).convert(
+        "RGBA",
+    )
+    blended_pil = PIL_Image.blend(image_pil, mask_pil, alpha=alpha)
+    return Image(get_bytes_from_pil(blended_pil))

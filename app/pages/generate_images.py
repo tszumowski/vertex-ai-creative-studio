@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import mesop as me
 from absl import logging
+import base64
 from components.header import header
 from config import config_lib
 from icons.svg_icon_component import svg_icon_component
@@ -36,6 +37,7 @@ class GenerateImagesPageState:
     """Local Page State"""
 
     show_advanced: bool = False
+    show_subject_style: bool = False
     temp_name: str = ""
     is_loading: bool = False
 
@@ -46,6 +48,10 @@ class GenerateImagesPageState:
     prompt_input: str = ""
     prompt_placeholder: str = ""
     textarea_key: int = 0
+    upload_files: dict[int, dict[str, str]] = dataclasses.field(default_factory=dict)
+    upload_counter: int = 1
+    reference_image_uris: list[str] = dataclasses.field(default_factory=list)
+    reference_type: str = ""
 
     rewriter_prompt: str = ""
     critic_prompt: str = ""
@@ -267,15 +273,15 @@ def content(app_state: me.state) -> None:
                             )
                         # Advanced controls
                         # negative prompt
-                        with me.box(
-                            style=me.Style(
-                                display="flex",
-                                flex_direction="row",
-                                gap=5,
-                            ),
-                        ):
-                            if page_state.show_advanced:
-                                me.box(style=me.Style(width=67))
+                        if page_state.show_advanced:
+                            with me.box(
+                                style=me.Style(
+                                    display="flex",
+                                    flex_direction="row",
+                                    gap=5,
+                                ),
+                            ):
+                                me.box(style=me.Style(width=65))
                                 me.input(
                                     label="negative phrases",
                                     on_blur=on_event_modify_state,
@@ -304,6 +310,65 @@ def content(app_state: me.state) -> None:
                                     disabled=True,
                                     key="seed",
                                 )
+                            # Reference Images.
+                            with me.box(
+                                style=me.Style(
+                                    display="flex",
+                                    flex_direction="column",
+                                    gap=5,
+                                ),
+                            ):
+                                for idx in range(page_state.upload_counter):
+                                    with me.box(
+                                        style=me.Style(
+                                            display="flex",
+                                            flex_direction="row",
+                                            gap=5,
+                                        ),
+                                    ):
+                                        me.box(style=me.Style(width=65))
+                                        with me.content_uploader(
+                                            on_upload=on_upload,
+                                            type="stroked",
+                                            key=f"upload_{idx}",
+                                        ):
+                                            with me.tooltip(
+                                                message="Upload a reference image"
+                                            ):
+                                                me.icon("upload")
+                                        me.button_toggle(
+                                            key=f"referencetype_{idx}",
+                                            value=page_state.reference_type,
+                                            buttons=constants.REFERENCE_TYPES_OPTIONS,
+                                            multiple=False,
+                                            hide_selection_indicator=False,
+                                            disabled=False,
+                                            on_change=on_change_reference_type,
+                                            style=me.Style(margin=me.Margin(bottom=20)),
+                                        )
+                                        me.button(
+                                            "Remove",
+                                            on_click=decrement_upload_counter,
+                                            key=f"uploadremove_{idx}",
+                                        )
+                                        me.image(
+                                            src=f"{page_state.upload_files.get(idx)}",
+                                            style=me.Style(
+                                                width="10px",
+                                                margin=me.Margin(top=1),
+                                                border_radius="1px",
+                                            ),
+                                            key=f"img_{idx}",
+                                        )
+                                with me.box(
+                                    style=me.Style(
+                                        display="flex",
+                                        flex_direction="row",
+                                        gap=5,
+                                    ),
+                                ):
+                                    me.box(style=me.Style(width=65))
+                                    me.button("Add", on_click=increment_upload_counter)
 
                     # Image output
                     with me.box(style=_BOX_STYLE):
@@ -417,6 +482,68 @@ def content(app_state: me.state) -> None:
 
 
 # Event Handlers
+def decrement_upload_counter(event: me.ClickEvent) -> None:
+    state = me.state(GenerateImagesPageState)
+    state.upload_counter -= 1
+    idx_to_remove = int(event.key.split("_")[1])
+    if state.upload_files.get(idx_to_remove):
+        del state.upload_files[idx_to_remove]
+
+
+def increment_upload_counter(event: me.ClickEvent) -> None:
+    del event  # Unused.
+    state = me.state(GenerateImagesPageState)
+    state.upload_counter += 1
+
+
+def on_change_reference_type(event: me.ButtonToggleChangeEvent) -> None:
+    state = me.state(GenerateImagesPageState)
+    idx = int(event.key.split("_")[1])
+    if state.upload_files.get(idx):
+        state.upload_files[idx]["reference_type"] = event.value
+    else:
+        state.upload_files[idx] = {}
+        state.upload_files[idx]["reference_type"] = event.value
+
+
+async def on_upload(event: me.UploadEvent) -> None:
+    """Upload image to GCS.
+
+    Args:
+        event: An Upload event.
+    """
+    state = me.state(GenerateImagesPageState)
+    upload_file_index = int(event.key.split("_")[1])
+    state.upload_files[upload_file_index]["reference_image_uri"] = None
+    contents = base64.b64encode(event.file.getvalue()).decode("utf-8")
+    payload = {
+        "bucket_name": config.image_creation_bucket,
+        "contents": contents,
+        "mime_type": event.file.mime_type,
+        "file_name": event.file.name,
+        "sub_dir": "reference_images",
+    }
+    try:
+        logging.info("Making request with payload %s", payload)
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/files/upload",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
+        upload_uri = await response.json()
+        logging.info(
+            "Contents len %s of type %s uploaded to %s as %s.",
+            len(contents),
+            event.file.mime_type,
+            config.image_creation_bucket,
+            upload_uri,
+        )
+        state.upload_files[upload_file_index]["reference_image_uri"] = upload_uri
+    except Exception as e:
+        logging.exception("Something went wrong uploading image: %s", e)
+
+
 def on_click_clear_images(event: me.ClickEvent) -> None:
     """Click Event to clear images."""
     del event
@@ -498,6 +625,7 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
         "negative_prompt": state.negative_prompt_input,
         "aspect_ratio": state.aspect_ratio,
         "add_watermark": state.add_watermark,
+        "reference_images": state.upload_files,
     }
     logging.info("Making request with payload %s", payload)
     response = await auth_request.make_authenticated_request(
