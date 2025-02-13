@@ -49,7 +49,7 @@ class GenerateImagesPageState:
     prompt_placeholder: str = ""
     textarea_key: int = 0
     upload_files: dict[int, dict[str, str]] = dataclasses.field(default_factory=dict)
-    upload_counter: int = 1
+    uploader_index: list[int] = dataclasses.field(default_factory=lambda: [0])
     reference_image_uris: list[str] = dataclasses.field(default_factory=list)
     reference_type: str = ""
 
@@ -318,7 +318,7 @@ def content(app_state: me.state) -> None:
                                     gap=5,
                                 ),
                             ):
-                                for idx in range(page_state.upload_counter):
+                                for idx in page_state.uploader_index:
                                     with me.box(
                                         style=me.Style(
                                             display="flex",
@@ -333,9 +333,9 @@ def content(app_state: me.state) -> None:
                                             key=f"upload_{idx}",
                                         ):
                                             with me.tooltip(
-                                                message="Upload a reference image"
+                                                message="Upload a reference image",
                                             ):
-                                                me.icon("upload")
+                                                me.icon("upload", key=f"icon_{idx}")
                                         me.button_toggle(
                                             key=f"referencetype_{idx}",
                                             value=page_state.reference_type,
@@ -346,19 +346,25 @@ def content(app_state: me.state) -> None:
                                             on_change=on_change_reference_type,
                                             style=me.Style(margin=me.Margin(bottom=20)),
                                         )
+                                        if page_state.upload_files.get(idx):
+                                            me.image(
+                                                src=page_state.upload_files[idx][
+                                                    "reference_image_uri"
+                                                ].replace(
+                                                    "gs://",
+                                                    "https://storage.mtls.cloud.google.com/",
+                                                ),
+                                                style=me.Style(
+                                                    width="40px",
+                                                    margin=me.Margin(top=1),
+                                                    border_radius="10px",
+                                                ),
+                                                key=f"img_{idx}",
+                                            )
                                         me.button(
                                             "Remove",
                                             on_click=decrement_upload_counter,
                                             key=f"uploadremove_{idx}",
-                                        )
-                                        me.image(
-                                            src=f"{page_state.upload_files.get(idx)}",
-                                            style=me.Style(
-                                                width="10px",
-                                                margin=me.Margin(top=1),
-                                                border_radius="1px",
-                                            ),
-                                            key=f"img_{idx}",
                                         )
                                 with me.box(
                                     style=me.Style(
@@ -368,7 +374,11 @@ def content(app_state: me.state) -> None:
                                     ),
                                 ):
                                     me.box(style=me.Style(width=65))
-                                    me.button("Add", on_click=increment_upload_counter)
+                                    me.button(
+                                        "Add",
+                                        key=f"uploadadd_{idx}",
+                                        on_click=increment_upload_counter,
+                                    )
 
                     # Image output
                     with me.box(style=_BOX_STYLE):
@@ -411,7 +421,7 @@ def content(app_state: me.state) -> None:
                                                 border_radius="35px",
                                             ),
                                         )
-                                # SynthID notice
+                            # SynthID notice
                             with me.box(
                                 style=me.Style(
                                     display="flex",
@@ -466,7 +476,6 @@ def content(app_state: me.state) -> None:
                                         flex_wrap="wrap",
                                         display="flex",
                                         flex_direction="row",
-                                        # width="85%",
                                         padding=me.Padding.all(10),
                                     ),
                                 ):
@@ -484,16 +493,16 @@ def content(app_state: me.state) -> None:
 # Event Handlers
 def decrement_upload_counter(event: me.ClickEvent) -> None:
     state = me.state(GenerateImagesPageState)
-    state.upload_counter -= 1
     idx_to_remove = int(event.key.split("_")[1])
+    state.uploader_index.pop(idx_to_remove)
     if state.upload_files.get(idx_to_remove):
         del state.upload_files[idx_to_remove]
 
 
 def increment_upload_counter(event: me.ClickEvent) -> None:
-    del event  # Unused.
     state = me.state(GenerateImagesPageState)
-    state.upload_counter += 1
+    idx_to_add = int(event.key.split("_")[1])
+    state.uploader_index.append(idx_to_add)
 
 
 def on_change_reference_type(event: me.ButtonToggleChangeEvent) -> None:
@@ -504,44 +513,6 @@ def on_change_reference_type(event: me.ButtonToggleChangeEvent) -> None:
     else:
         state.upload_files[idx] = {}
         state.upload_files[idx]["reference_type"] = event.value
-
-
-async def on_upload(event: me.UploadEvent) -> None:
-    """Upload image to GCS.
-
-    Args:
-        event: An Upload event.
-    """
-    state = me.state(GenerateImagesPageState)
-    upload_file_index = int(event.key.split("_")[1])
-    state.upload_files[upload_file_index]["reference_image_uri"] = None
-    contents = base64.b64encode(event.file.getvalue()).decode("utf-8")
-    payload = {
-        "bucket_name": config.image_creation_bucket,
-        "contents": contents,
-        "mime_type": event.file.mime_type,
-        "file_name": event.file.name,
-        "sub_dir": "reference_images",
-    }
-    try:
-        logging.info("Making request with payload %s", payload)
-        response = await auth_request.make_authenticated_request(
-            method="POST",
-            url=f"{config.api_gateway_url}/files/upload",
-            json_data=payload,
-            service_url=config.api_gateway_url,
-        )
-        upload_uri = await response.json()
-        logging.info(
-            "Contents len %s of type %s uploaded to %s as %s.",
-            len(contents),
-            event.file.mime_type,
-            config.image_creation_bucket,
-            upload_uri,
-        )
-        state.upload_files[upload_file_index]["reference_image_uri"] = upload_uri
-    except Exception as e:
-        logging.exception("Something went wrong uploading image: %s", e)
 
 
 def on_click_clear_images(event: me.ClickEvent) -> None:
@@ -586,6 +557,22 @@ def reload_welcome(event: me.ClickEvent) -> Generator[Any, Any, Any]:
     del event  # Unused.
     app_state = me.state(AppState)
     app_state.welcome_message = "Hello"
+    yield
+
+
+def on_image_input(event: me.InputEvent) -> None:
+    """Image Input Event"""
+    state = me.state(GenerateImagesPageState)
+    state.prompt_input = event.value
+
+
+def on_click_generate_random_prompt(event: me.ClickEvent) -> Generator[Any, Any, Any]:
+    """Gets a random image generation prompt."""
+    del event
+    state = me.state(GenerateImagesPageState)
+    prompt = secrets.choice(constants.RANDOM_PROMPTS)
+    state.prompt_placeholder = prompt
+    on_image_input(me.InputEvent(key=str(state.textarea_key), value=prompt))
     yield
 
 
@@ -683,17 +670,41 @@ async def on_click_generate_images(
     yield
 
 
-def on_image_input(event: me.InputEvent) -> None:
-    """Image Input Event"""
-    state = me.state(GenerateImagesPageState)
-    state.prompt_input = event.value
+async def on_upload(event: me.UploadEvent) -> AsyncGenerator[Any, Any, Any]:
+    """Upload image to GCS.
 
-
-def on_click_generate_random_prompt(event: me.ClickEvent) -> Generator[Any, Any, Any]:
-    """Gets a random image generation prompt."""
-    del event
+    Args:
+        event: An Upload event.
+    """
     state = me.state(GenerateImagesPageState)
-    prompt = secrets.choice(constants.RANDOM_PROMPTS)
-    state.prompt_placeholder = prompt
-    on_image_input(me.InputEvent(key=str(state.textarea_key), value=prompt))
-    yield
+    upload_file_index = int(event.key.split("_")[1])
+    state.upload_files[upload_file_index] = {}
+    state.upload_files[upload_file_index]["reference_image_uri"] = None
+    contents = base64.b64encode(event.file.getvalue()).decode("utf-8")
+    payload = {
+        "bucket_name": config.image_creation_bucket,
+        "contents": contents,
+        "mime_type": event.file.mime_type,
+        "file_name": event.file.name,
+        "sub_dir": "reference_images",
+    }
+    try:
+        logging.info("Making request with payload %s", payload)
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/files/upload",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
+        upload_uri = await response.json()
+        logging.info(
+            "Contents len %s of type %s uploaded to %s as %s.",
+            len(contents),
+            event.file.mime_type,
+            config.image_creation_bucket,
+            upload_uri,
+        )
+        state.upload_files[upload_file_index]["reference_image_uri"] = upload_uri
+        yield
+    except Exception as e:
+        logging.exception("Something went wrong uploading image: %s", e)

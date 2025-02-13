@@ -28,8 +28,8 @@ from vertexai.preview.vision_models import (
     MultiModalEmbeddingModel,
     RawReferenceImage,
     ReferenceImage,
-    StyleReferenceImage,
     Scribble,
+    StyleReferenceImage,
     SubjectReferenceImage,
 )
 
@@ -243,7 +243,7 @@ class VertexAIClient:
                 reference_images.append(ref_img)
         try:
             generated_images_uris = []
-            response = image_generation_model._generate_images(
+            response = image_generation_model.generate_images(
                 prompt=prompt,
                 add_watermark=add_watermark,
                 aspect_ratio=aspect_ratio,
@@ -251,7 +251,8 @@ class VertexAIClient:
                 output_gcs_uri=f"{self.bucket_uri}/generated",
                 language=language,
                 negative_prompt=negative_prompt,
-                reference_images=reference_images,
+                # Not yet supported in SDK.
+                # reference_images=reference_images,
             )
 
             for index, image in enumerate(response.images):
@@ -310,7 +311,6 @@ class VertexAIClient:
         number_of_images: int = 1,
         edit_mode: str = "",
         mask_mode: str = "foreground",
-        target_size: tuple[str, str] | None = None,
         mask_uri: str | None = None,
     ) -> str:
         """Edits and image.
@@ -321,7 +321,6 @@ class VertexAIClient:
             number_of_images: Number of images to create after edits. Defaults to 1.
             edit_mode: The edit mode for editing. Defaults to "".
             mask_mode: The area to edit. Defaults to "foreground".
-            target_size: (Optional) The height and width of the target image.
             mask_uri: The URI of the image mask.
 
         Returns:
