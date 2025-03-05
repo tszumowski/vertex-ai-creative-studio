@@ -41,7 +41,7 @@ IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
 IMAGEN_GENERATION_MODEL = "imagen-3.0-generate-001"
 MULTIMODAL_EMBEDDING_MODEL = "multimodalembedding@001"
-EMBEDDING_DIMENSIONS = 128
+EMBEDDING_DIMENSIONS = 256
 SEGMENTATION_ENDPOINT = (
     "projects/{project_id}/locations/{region}/"
     f"publishers/google/models/{IMAGE_SEGMENTATION_MODEL}"
@@ -198,7 +198,7 @@ class VertexAIClient:
         num_images: int,
         language: str,
         negative_prompt: str,
-        reference_images: dict[str, dict[str, str]],
+        reference_images: list[dict[str, str]],
     ) -> list[str]:
         """Generates a set of images.
 
@@ -210,7 +210,7 @@ class VertexAIClient:
             num_images: The number of images to generate.
             language: The language.
             negative_prompt: The negative prompt.
-            reference_images: A dict of reference images including type.
+            reference_images: A list of reference images including type.
 
         Returns:
             A list of GCS uris.
@@ -218,12 +218,10 @@ class VertexAIClient:
         Raises:
             ImageClientError: When the images could not be generated.
         """
-        image_generation_model = ImageGenerationModel.from_pretrained(
-            model,
-        )
-        reference_images = []
+
+        _reference_images = []
         if reference_images:
-            for idx, ref in reference_images.items():
+            for idx, ref in enumerate(reference_images):
                 ref_img = None
                 if ref["reference_type"] in ("default", "person", "animal", "product"):
                     ref_img = SubjectReferenceImage(
@@ -240,20 +238,39 @@ class VertexAIClient:
                             gcs_uri=ref["reference_image_uri"],
                         ),
                     )
-                reference_images.append(ref_img)
+                _reference_images.append(ref_img)
         try:
             generated_images_uris = []
-            response = image_generation_model.generate_images(
-                prompt=prompt,
-                add_watermark=add_watermark,
-                aspect_ratio=aspect_ratio,
-                number_of_images=num_images,
-                output_gcs_uri=f"{self.bucket_uri}/generated",
-                language=language,
-                negative_prompt=negative_prompt,
-                # Not yet supported in SDK.
-                # reference_images=reference_images,
-            )
+            if _reference_images:
+                # Reference images are currently only supported in the capability model.
+                # We would expect reference images to be supported in the base imagen3
+                # models in the future.
+                image_generation_model = ImageGenerationModel.from_pretrained(
+                    IMAGEN_EDIT_MODEL,
+                )
+                response = image_generation_model._generate_images(
+                    prompt=prompt,
+                    # Cannot add watermark in imagen capability model.
+                    aspect_ratio=aspect_ratio,
+                    number_of_images=num_images,
+                    output_gcs_uri=f"{self.bucket_uri}/generated",
+                    language=language,
+                    negative_prompt=negative_prompt,
+                    reference_images=_reference_images,
+                )
+            else:
+                image_generation_model = ImageGenerationModel.from_pretrained(
+                    model,
+                )
+                response = image_generation_model.generate_images(
+                    prompt=prompt,
+                    add_watermark=add_watermark,
+                    aspect_ratio=aspect_ratio,
+                    number_of_images=num_images,
+                    output_gcs_uri=f"{self.bucket_uri}/generated",
+                    language=language,
+                    negative_prompt=negative_prompt,
+                )
 
             for index, image in enumerate(response.images):
                 image_size = len(image._as_base64_string())
@@ -308,10 +325,11 @@ class VertexAIClient:
         self,
         image_uri: str,
         prompt: str,
-        number_of_images: int = 1,
-        edit_mode: str = "",
-        mask_mode: str = "foreground",
-        mask_uri: str | None = None,
+        number_of_images: int,
+        edit_mode: str,
+        mask_mode: str,
+        mask_uri: str,
+        model: str | None = IMAGEN_EDIT_MODEL,
     ) -> str:
         """Edits and image.
 
@@ -322,6 +340,7 @@ class VertexAIClient:
             edit_mode: The edit mode for editing. Defaults to "".
             mask_mode: The area to edit. Defaults to "foreground".
             mask_uri: The URI of the image mask.
+            model: The imagen edit model used.
 
         Returns:
             The edited image URI.
@@ -330,7 +349,7 @@ class VertexAIClient:
             VertexAIClientError: If the image could not be edited.
         """
         try:
-            edit_model = ImageGenerationModel.from_pretrained(IMAGEN_EDIT_MODEL)
+            edit_model = ImageGenerationModel.from_pretrained(model)
             bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
             edited_file_name = f"{file_name}-edited{extension}"
 
@@ -608,7 +627,11 @@ class VertexAIClient:
             file_name=overlay_file_name,
             sub_dir="overlays",
         )
-        return {"mask_uri": mask_file_uri, "overlay_uri": overlay_file_uri}
+        return {
+            "mask_uri": mask_file_uri,
+            "overlay_uri": overlay_file_uri,
+            "image_uri": image_uri,
+        }
 
 
 def get_bucket_and_file_name(file_uri: str) -> tuple[str, str, str]:

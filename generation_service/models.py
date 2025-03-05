@@ -13,7 +13,7 @@ class ImageGenerationRequest(BaseModel):
     aspect_ratio: str | None = "1:1"
     add_watermark: bool | None = True
     language: str | None = "auto"
-    reference_images: dict[str, dict[str, str]] | None = None
+    reference_images: list[dict[str, str]] | None = None
 
 
 class ImageGenerationResponse(BaseModel):

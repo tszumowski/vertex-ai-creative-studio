@@ -37,6 +37,7 @@ class EditImagesPageState:
     show_advanced: bool = False
     temp_name: str = ""
     is_loading: bool = False
+    is_loading_segmentation: bool = False
     show_overlay: bool = False
 
     prompt_input: str = ""
@@ -46,6 +47,7 @@ class EditImagesPageState:
     upload_file: me.UploadedFile = None
     upload_file_key: int = 0
     upload_uri: str = ""
+    outpainted_uri: str = ""
     edit_mode: str = "EDIT_MODE_INPAINT_INSERTION"
     edit_mode_placeholder: str = ""
 
@@ -56,7 +58,7 @@ class EditImagesPageState:
     edit_uri: str = ""
     mask_uri: str = ""
     overlay_uri: str = ""
-    formatted_image_uri: str = ""
+    overlay_file_key: int = 0
     mask_prompt: str = ""
 
     segmentation_classes: list[str] = field(default_factory=list)
@@ -123,41 +125,58 @@ def content() -> None:
                         with me.box(style=_BOX_STYLE):
                             me.text("Upload Image", style=me.Style(font_weight="bold"))
                             me.box(style=me.Style(height="12px"))
-
-                            if page_state.upload_uri and not page_state.show_overlay:
-                                me.image(
-                                    src=page_state.upload_uri.replace(
-                                        "gs://",
-                                        "https://storage.mtls.cloud.google.com/",
-                                    ),
+                            if page_state.is_loading_segmentation:
+                                with me.box(
                                     style=me.Style(
-                                        height="400px",
-                                        border_radius=12,
+                                        align_items="center",
+                                        display="flex",
+                                        justify_content="center",
+                                        position="relative",
+                                        top="25%",
                                     ),
-                                    key=str(page_state.upload_file_key),
-                                )
-                            elif page_state.upload_uri and page_state.show_overlay:
-                                me.image(
-                                    src=page_state.overlay_uri.replace(
-                                        "gs://",
-                                        "https://storage.mtls.cloud.google.com/",
-                                    ),
-                                    style=me.Style(
-                                        height="400px",
-                                        border_radius=12,
-                                    ),
-                                )
+                                ):
+                                    me.progress_spinner()
                             else:
-                                me.box(style=me.Style(height="400px", width="400px"))
-                            me.box(style=me.Style(height="12px"))
-                            me.uploader(
-                                label="Upload Image",
-                                accepted_file_types=["image/jpeg", "image/png"],
-                                on_upload=on_upload,
-                                type="flat",
-                                color="primary",
-                                style=me.Style(font_weight="bold"),
-                            )
+                                if (
+                                    page_state.upload_uri
+                                    and not page_state.show_overlay
+                                ):
+                                    me.image(
+                                        src=page_state.upload_uri.replace(
+                                            "gs://",
+                                            "https://storage.mtls.cloud.google.com/",
+                                        ),
+                                        style=me.Style(
+                                            height="400px",
+                                            border_radius=12,
+                                        ),
+                                        key=str(page_state.upload_file_key),
+                                    )
+                                elif page_state.overlay_uri and page_state.show_overlay:
+                                    me.image(
+                                        src=page_state.overlay_uri.replace(
+                                            "gs://",
+                                            "https://storage.mtls.cloud.google.com/",
+                                        ),
+                                        style=me.Style(
+                                            height="400px",
+                                            border_radius=12,
+                                        ),
+                                        key=str(page_state.overlay_file_key),
+                                    )
+                                else:
+                                    me.box(
+                                        style=me.Style(height="400px", width="400px"),
+                                    )
+                                me.box(style=me.Style(height="12px"))
+                                me.uploader(
+                                    label="Upload Image",
+                                    accepted_file_types=["image/jpeg", "image/png"],
+                                    on_upload=on_upload,
+                                    type="flat",
+                                    color="primary",
+                                    style=me.Style(font_weight="bold"),
+                                )
                         with me.box(style=_BOX_STYLE):
                             me.text("Output Image", style=me.Style(font_weight="bold"))
                             me.box(style=me.Style(height="12px"))
@@ -186,6 +205,15 @@ def content() -> None:
                                             display="flex",
                                         ),
                                     )
+                                    with me.card_actions(align="end"):
+                                        me.button(
+                                            label="Download",
+                                            on_click=on_click_download,
+                                        )
+                                        me.button(
+                                            label="Edit",
+                                            on_click=on_click_edit,
+                                        )
                                 else:
                                     me.box(
                                         style=me.Style(height="400px", width="400px"),
@@ -321,7 +349,6 @@ def content() -> None:
                                         color="primary",
                                         key="horizontal_alignment",
                                     )
-
                                     with me.box(
                                         style=me.Style(
                                             display="flex",
@@ -403,6 +430,22 @@ def content() -> None:
                             )
 
 
+def on_click_edit(event: me.ClickEvent) -> None:
+    del event  # Unused.
+    page_state = me.state(EditImagesPageState)
+    me.navigate("/edit", query_params={"upload_uri": page_state.edit_uri})
+
+
+def on_click_download(event: me.ClickEvent) -> None:
+    del event  # Unused
+    page_state = me.state(EditImagesPageState)
+    target = page_state.edit_uri.replace(
+        "gs://",
+        "https://storage.mtls.cloud.google.com/",
+    )
+    me.navigate(target)
+
+
 def on_change_alignment(event: me.RadioChangeEvent) -> None:
     state = me.state(EditImagesPageState)
     setattr(state, event.key, event.value)
@@ -411,6 +454,10 @@ def on_change_alignment(event: me.RadioChangeEvent) -> None:
 def on_click_unset_zone(event: me.ClickEvent) -> None:
     del event  # Unused.
     state = me.state(EditImagesPageState)
+    state.mask_uri = ""
+    state.overlay_uri = ""
+    state.overlay_file_key += 1
+    state.outpainted_uri = ""
     state.show_overlay = False
 
 
@@ -420,17 +467,26 @@ async def on_click_image_segmentation(
     """Creates images from Imagen and returns a list of gcs uris."""
     del event  # Unused.
     state = me.state(EditImagesPageState)
+    state.is_loading_segmentation = True
+    state.show_overlay = False
+    state.outpainted_uri = ""
+    state.mask_uri = ""
+    state.overlay_uri = ""
+    state.overlay_file_key += 1
+    yield
     mask = await send_image_segmentation_request(state)
     state.mask_uri = mask["mask_uri"]
     state.overlay_uri = mask["overlay_uri"]
-    state.formatted_image_uri = mask.get("image_uri")
-    yield
+    state.outpainted_uri = mask.get("image_uri")
+    state.is_loading_segmentation = False
     state.show_overlay = True
     yield
 
 
 async def send_image_segmentation_request(state: EditImagesPageState) -> str:
     """Event for image segmentation."""
+    if not state.upload_uri:
+        return None
     payload = {
         "image_uri": state.upload_uri,
         "mode": state.mask_mode,
@@ -447,9 +503,7 @@ async def send_image_segmentation_request(state: EditImagesPageState) -> str:
         service_url=config.api_gateway_url,
     )
     try:
-        mask = await response.json()
-        logging.info(mask)
-        return mask
+        return await response.json()
     except Exception as e:
         logging.exception("Something went wrong segmenting image: %s", e)
 
@@ -462,14 +516,14 @@ def on_change_aspect_ratio(event: me.RadioChangeEvent) -> None:
         int(state.initial_edit_target_width),
         round(
             int(state.initial_edit_target_height)
-            * (new_aspect_ratio[0] / new_aspect_ratio[1])
+            * (new_aspect_ratio[0] / new_aspect_ratio[1]),
         ),
     )
     new_h = max(
         int(state.initial_edit_target_height),
         round(
             int(state.initial_edit_target_width)
-            * (new_aspect_ratio[1] / new_aspect_ratio[0])
+            * (new_aspect_ratio[1] / new_aspect_ratio[0]),
         ),
     )
     state.edit_target_height = str(new_h)
@@ -502,8 +556,8 @@ def on_click_clear_images(event: me.ClickEvent) -> None:
     state.edit_target_height = ""
     state.edit_target_width = ""
     state.mask_uri = ""
+    state.overlay_file_key += 1
     state.overlay_uri = ""
-    state.formatted_image_uri = ""
 
 
 async def on_upload(event: me.UploadEvent) -> None:
@@ -612,11 +666,9 @@ def _get_target_image_size(state: EditImagesPageState) -> tuple[int, int]:
 
 async def send_image_editing_request(state: EditImagesPageState) -> str:
     """Event for image editing."""
-    image_uri = (
-        state.formatted_image_uri
-        if state.formatted_image_uri and state.edit_mode == "EDIT_MODE_OUTPAINT"
-        else state.upload_uri
-    )
+    image_uri = state.upload_uri
+    if state.outpainted_uri and state.edit_mode == "EDIT_MODE_OUTPAINT":
+        image_uri = state.outpainted_uri
     payload = {
         "image_uri": image_uri,
         "prompt": state.prompt_input,

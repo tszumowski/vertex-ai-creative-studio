@@ -43,21 +43,21 @@ steps:
 #  - '-c'
 #  - |
 #      terraform apply -var-file="./terraform.tfvars" -auto-approve
-#- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-#  id: 'generation-service'
-#  entrypoint: 'gcloud'
-#  args: [
-#    'run',
-#    'deploy',
-#    'generation-service',
-#    '--image', 'gcr.io/$PROJECT_ID/creative-studio/generation-service:latest',
-#    '--region', 'us-central1',
-#    '--port', '8000',
-#    '--set-env-vars', 'IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia',
-#    '--set-env-vars', 'PROJECT_ID=$PROJECT_ID',
-#    '--set-env-vars', 'REGION=us-central1',
-#    '--format', 'value(status.url)',
-#  ]
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  id: 'generation-service'
+  entrypoint: 'gcloud'
+  args: [
+    'run',
+    'deploy',
+    'generation-service',
+    '--image', 'gcr.io/$PROJECT_ID/creative-studio/generation-service:latest',
+    '--region', 'us-central1',
+    '--port', '8000',
+    '--set-env-vars', 'IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia',
+    '--set-env-vars', 'PROJECT_ID=$PROJECT_ID',
+    '--set-env-vars', 'REGION=us-central1',
+    '--format', 'value(status.url)',
+  ]
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'file-service'
   entrypoint: 'gcloud'

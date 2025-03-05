@@ -108,11 +108,13 @@ def content(app_state: me.state) -> None:
                             key=f"download_{idx}",
                         )
                         me.button(
-                            label="Edit", key=f"edit_{idx}", on_click=on_click_edit
+                            label="Edit",
+                            key=f"edit_{idx}",
+                            on_click=on_click_edit,
                         )
 
 
-def on_click_edit(event: me.ClickEvent):
+def on_click_edit(event: me.ClickEvent) -> None:
     page_state = me.state(HistoryPageState)
     img_idx = int(event.key.split("_")[1])
     result = json.loads(page_state.image_results)[img_idx]
@@ -120,7 +122,7 @@ def on_click_edit(event: me.ClickEvent):
     me.navigate("/edit", query_params={"upload_uri": media_uri})
 
 
-def on_click_download(event: me.ClickEvent):
+def on_click_download(event: me.ClickEvent) -> None:
     page_state = me.state(HistoryPageState)
     img_idx = int(event.key.split("_")[1])
     result = json.loads(page_state.image_results)[img_idx]
