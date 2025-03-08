@@ -179,18 +179,31 @@ async def on_enter(event: me.InputEnterEvent) -> AsyncGenerator[Any, Any, Any]:
 def format_nested_dict(input_dict):
     formatted_lines = []
     for key, value in input_dict.items():
-        key_str = str(key)
-        if isinstance(value, dict):
-            formatted_lines.append(f"*{key_str}*\n")  # Indent nested keys
-            formatted_lines.extend(
-                format_nested_dict(value),
-            )  # Recurse for nested dicts
-        else:
-            if key == "vector_distance":
-                value = round(value, 3)
-            formatted_lines.append(f"**{key_str}**: {str(value)} \n")
+        if key in ("worker", "aspect_ratio", "prompt", "model"):
+            key_str = snake_to_normal(str(key))
+            if isinstance(value, dict):
+                # formatted_lines.append(f"*{key_str}*\n")  # Indent nested keys
+                formatted_lines.extend(
+                    format_nested_dict(value),
+                )  # Recurse for nested dicts
+            else:
+                formatted_lines.append(f"**{key_str}**: {str(value)} \n")
     return formatted_lines
 
 
-def format_dict_to_text_nested(input_dict):
+def format_dict_to_text_nested(input_dict: dict[Any]):
     return "\n".join(format_nested_dict(input_dict))
+
+
+def snake_to_normal(snake_case_string: str) -> str:
+    """Converts a lower_snake_case string to Normal Case.
+
+    Args:
+        snake_case_string: The input string in lower_snake_case.
+
+    Returns:
+        The string in Normal Case.
+    """
+    words = snake_case_string.split("_")
+    normal_case_words = [word.capitalize() for word in words]
+    return " ".join(normal_case_words)

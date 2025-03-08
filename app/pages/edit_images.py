@@ -119,7 +119,8 @@ def content() -> None:
                         style=me.Style(
                             display="flex",
                             flex_direction="row",
-                            gap=20,
+                            gap=35,
+                            border_radius=20,
                         ),
                     ):
                         with me.box(style=_BOX_STYLE):
@@ -166,7 +167,7 @@ def content() -> None:
                                     )
                                 else:
                                     me.box(
-                                        style=me.Style(height="400px", width="400px"),
+                                        style=me.Style(height="400px", width="460px"),
                                     )
                                 me.box(style=me.Style(height="12px"))
                                 me.uploader(
@@ -216,7 +217,10 @@ def content() -> None:
                                         )
                                 else:
                                     me.box(
-                                        style=me.Style(height="400px", width="400px"),
+                                        style=me.Style(
+                                            height="400px",
+                                            width="460px",
+                                        ),
                                     )
                                 me.box(style=me.Style(height="12px"))
                                 me.box(style=me.Style(height="20px"))

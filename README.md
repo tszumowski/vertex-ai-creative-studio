@@ -1,119 +1,62 @@
-# Creative Studio | Vertex AI
+# GenMedia Studio
 
-Creative Studio is an app that highlights the capabilities of Google Cloud Vertex AI generative AI creative APIs, including Imagen, the text-to-image model.
+GenMedia Studio is a web application built for creative & marketing teams providing a user-friendly way to access and interact with Google Cloud Vertex AI's generative AI creative APIs with a focus on streamlining image and video generation and editing.
 
-Features Gemini for prompt rewriting as well as for a critic to provide a multimodal evaluation of the generated images. 
+## Overview
 
-This app is built with [Mesop](https://google.github.io/mesop), a Python-based UI framework that enables you to rapidly build web apps like this demo and internal apps.
+GenMedia Studio addresses the challenges of efficiently creating high-quality images for various use cases, such as display campaigns, website content, and more. It aims to improve the efficiency and quality of AI-generated images.
 
+This solution employs a modular microservices architecture to ensure scalability, maintainability, and expandability. Each service is designed to handle specific tasks, allowing for independent scaling and updates.
 
-## GenMedia | Creative Studio
+## Features
 
-![](./screenshots/creative_studio_02.png)
+GenMedia Studio provides a rich set of features, including:
 
+* **Image Generation:** Generate high-quality images using Imagen3 and Imagen3 Fast models, with support for preset modifiers to control the output, as well as the ability to provide reference images.
+   
+* **Prompt Rewriting:** Refine and enhance your text prompts using Google Gemini to achieve better image generation results.
+   
+* **Customizable Image Critique/Evaluation:** Evaluate generated images based on specific criteria or personas, using the power of Google Gemini to provide detailed feedback.
+   
+* **Mask-Based Image Editing:** Precisely edit images using Imagen3's masking capabilities and segmentation models for tasks like inpainting, outpainting, and object removal.
+   
+* **Image Storage and Metadata:** Store generated and edited images along with their associated metadata for easy retrieval and management.
+   
+* **Multimodal Image Search:** Search for images using text queries, leveraging multimodal embeddings to combine semantic and keyword search capabilities.
 
+## Architecture
 
-## Run locally
+GenMedia Studio is built using a microservices architecture on Google Cloud. Key components include:
 
-Two environment variables are required to run this application:
+* **GenMedia Frontend:** A web application built with Mesop, providing a user-friendly interface for interacting with the various services.
+   
+* **API Gateway:** The central entry point for the application, routing requests to the appropriate backend services. 
+   
+* **Microservices:**
+    * **Generation Service:** Handles image generation and editing requests, leveraging Vertex AI's Imagen models. 
+    * **File Service:** Manages the storage and retrieval of images and related files, using Google Cloud Storage. 
 
-`PROJECT_ID`   
-Provide an environment variable for your Google Cloud Project ID
+The architecture is designed for scalability, maintainability, and the ability to easily add new features.
 
-```
-export PROJECT_ID=$(gcloud config get project)
-```
+## Getting Started
 
-`IMAGE_CREATION_BUCKET`  
-You'll need Google Cloud Storage bucket for the generative media. Note that this has to exist prior to running the application. 
+### Prerequisites
 
-If an existing Google Cloud Storage bucket is available, please provide its name without the `"gs://"` prefix.  
+*   A **Google Cloud project**:
+    *   `Owner` permissions for the user installing the application
+    *   Configured `OAuth Consent Screen` set to `INTERNAL`.
+    *   Configured `Docker` by running the following once:
+        
+        `gcloud auth configure-docker us-central1-docker.pkg.dev --quiet`
 
-```
-export IMAGE_CREATION_BUCKET=$PROJECT_ID-genmedia
-```  
-
-Otherwise, follow the next steps to create a storage bucket.  
-
-### Create Storage Bucket (Optional) 
-
-Please run the following command to obtain new credentials.  
-
-```
-gcloud auth login  
-```  
-
-If you have already logged in with a different account, run:  
-
-```
-gcloud config set account $PROJECT_ID  
-```  
-
-Create the storage bucket.  
-
-```
-gcloud storage buckets create gs://$BUCKET_NAME --location=US --default-storage-class=STANDARD
-```
-
-> **NOTE:** We have provided a `env_template` that you can use to in your development environment. Simply duplicate it, rename it to `.env` and replace `<YOUR_GCP_PROJECT_ID>` with your project ID.  
-
-Then run `source .env` to add those variables into your environment.  
-
-
-### Create Virtual Environment 
-
-Create and activate a virtual environment for your solution. 
-```
-python3 -m venv venv 
-source venv/bin/activate
-```  
-
-### Install requirements
-
-Install the required Python libraries.
+### Installation
 
 ```
-pip install -r requirements.txt
+git clone <repo_url>
+cd genmedia-studio
+gcloud builds submit --config cloudbuild.yaml .
 ```
 
-### Run with mesop
-
-To run locally, use the `mesop` command and open the browser to the URL provided:
-
-```
-mesop main.py
-```
-
-> **NOTE:** The mesop application may request you to allow it to accept incoming network connections. Please accept to avoid limiting the application's behavior.  
-
-
-## Deploy to Cloud Run
-
-Deploy this application to a Cloud Run service.
-
-It's recommended that you create a separate service account to deploy a Cloud Run Service.
-
-
-```
-export SA_NAME=sa-genmedia-creative-studio
-export PROJECT_ID=$(gcloud config get project)
-
-gcloud iam service-accounts create $SA_NAME --description="genmedia creative studio" --display-name="$SA_NAME"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"  --role="roles/aiplatform.user"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID --member="serviceAccount:$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com" --role="roles/storage.objectUser"
-```
-
-Deploy with the service account and environment variables created above; `PROJECT_ID` and `IMAGE_CREATION_BUCKET`.
-
-```
-gcloud run deploy creative-studio --source . \
-  --allow-unauthenticated --region us-central1 \
-  --service-account $SA_NAME@$PROJECT_ID.iam.gserviceaccount.com \
-  --update-env-vars=IMAGE_CREATION_BUCKET=$IMAGE_CREATION_BUCKET,PROJECT_ID=$PROJECT_ID
-```
-
-# Disclaimer
+## Disclaimer
 
 This is not an officially supported Google product.

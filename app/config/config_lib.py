@@ -21,6 +21,6 @@ class AppConfig:
         self.gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
         self.image_creation_bucket = os.environ.get("IMAGE_CREATION_BUCKET")
         self.api_gateway_url = (
-            f"https://api-gateway-{self.project_number}.{self.region}.run.app"
+            f"https://genmedia-api-gateway-{self.project_number}.{self.region}.run.app"
         )
         self.default_image_model = "imagen-3.0-fast-generate-001"

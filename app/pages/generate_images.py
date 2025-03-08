@@ -105,25 +105,14 @@ def content(app_state: me.state) -> None:
                 ),
             ):
                 header("Generate Images", "stadium")
-                # welcome message
                 with me.box(
                     style=me.Style(
                         flex_grow=1,
                         display="flex",
-                        align_items="center",
-                        justify_content="center",
+                        align_items="right",
+                        justify_content="right",
                     ),
-                    on_click=reload_welcome,
                 ):
-                    me.text(
-                        app_state.welcome_message,
-                        style=me.Style(
-                            width="80vw",
-                            font_size="10pt",
-                            font_style="italic",
-                            color="gray",
-                        ),
-                    )
                     with me.box(
                         style=me.Style(
                             display="flex",
@@ -495,10 +484,15 @@ def content(app_state: me.state) -> None:
 def decrement_upload_counter(event: me.ClickEvent) -> None:
     del event  # Unused.
     state = me.state(GenerateImagesPageState)
-    state.upload_count -= 1
-    idx_to_remove = state.upload_count
-    state.reference_types.pop(idx_to_remove)
-    state.reference_image_uris.pop(idx_to_remove)
+    if state.upload_count == 1:
+        idx_to_remove = 0
+        state.reference_types[0] = "default"
+        state.reference_image_uris[0] = ""
+    else:
+        state.upload_count -= 1
+        idx_to_remove = state.upload_count
+        state.reference_types.pop(idx_to_remove)
+        state.reference_image_uris.pop(idx_to_remove)
 
 
 def increment_upload_counter(event: me.ClickEvent) -> None:
@@ -550,14 +544,6 @@ def on_blur_image_negative_prompt(event: me.InputBlurEvent) -> None:
 def on_blur_image_prompt(event: me.InputBlurEvent) -> None:
     """Image Blur Event"""
     me.state(GenerateImagesPageState).prompt_input = event.value
-
-
-def reload_welcome(event: me.ClickEvent) -> Generator[Any, Any, Any]:
-    """Handle regeneration of welcome message event"""
-    del event  # Unused.
-    app_state = me.state(AppState)
-    app_state.welcome_message = "Hello"
-    yield
 
 
 def on_image_input(event: me.InputEvent) -> None:

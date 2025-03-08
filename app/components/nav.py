@@ -97,7 +97,7 @@ def sidenav(current_page: str):
                         with me.tooltip(message="Expand menu"):
                             me.icon(icon="menu")
                 if app_state.sidenav_open:
-                    me.text("IMAGE ARENA", style=FANCY_TEXT_GRADIENT)
+                    me.text("GENMEDIA STUDIO", style=FANCY_TEXT_GRADIENT)
             # spacer
             me.box(style=me.Style(height=16))
             # standard pages

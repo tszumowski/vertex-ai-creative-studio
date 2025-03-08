@@ -62,8 +62,6 @@ venv.bak/
 
 # Other
 notebooks
-**/*.tf
-terraform
 LICENSE
 README.md
 ruff.toml

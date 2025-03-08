@@ -3,4 +3,3 @@ venv
 local/
 .env
 build/lib
-terraform

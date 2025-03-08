@@ -2,28 +2,28 @@ version: "3.3"
 
 services:
   generation_service:
-    image: 'gcr.io/$PROJECT_ID/creative-studio/generation-service:latest'
+    image: 'us-central1-docker.pkg.dev/$PROJECT_ID/genmedia-studio/generation-service:latest'
     build:
       context: .
       dockerfile: ./generation_service/Dockerfile
     ports:
       - "8000:8000"
   file_service:
-    image: 'gcr.io/$PROJECT_ID/creative-studio/file-service:latest'
+    image: 'us-central1-docker.pkg.dev/$PROJECT_ID/genmedia-studio/file-service:latest'
     build:
       context: .
       dockerfile: ./file_service/Dockerfile
     ports:
       - "8001:8000"
   api_gateway:
-    image: 'gcr.io/$PROJECT_ID/creative-studio/api-gateway:latest'
+    image: 'us-central1-docker.pkg.dev/$PROJECT_ID/genmedia-studio/api-gateway:latest'
     build:
       context: .
       dockerfile: ./api_gateway/Dockerfile 
     ports:
       - "8002:8000"
   app:
-    image: 'gcr.io/$PROJECT_ID/creative-studio/app:latest'
+    image: 'us-central1-docker.pkg.dev/$PROJECT_ID/genmedia-studio/app:latest'
     build:
       context: ./app/
       dockerfile: Dockerfile 

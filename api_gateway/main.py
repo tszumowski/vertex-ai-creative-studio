@@ -21,10 +21,10 @@ PROJECT_NUMBER = os.environ.get("PROJECT_NUMBER")
 REGION = os.environ.get("REGION")
 
 _GENERATION_SERVICE_URL = (
-    f"https://generation-service-{PROJECT_NUMBER}.{REGION}.run.app"
+    f"https://genmedia-generation-service-{PROJECT_NUMBER}.{REGION}.run.app"
 )
 
-_FILE_SERVICE_URL = f"https://file-service-{PROJECT_NUMBER}.{REGION}.run.app"
+_FILE_SERVICE_URL = f"https://genmedia-file-service-{PROJECT_NUMBER}.{REGION}.run.app"
 
 
 @app.post("/generation/generate_images")

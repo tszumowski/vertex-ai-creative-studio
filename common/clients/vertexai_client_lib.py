@@ -222,6 +222,8 @@ class VertexAIClient:
         _reference_images = []
         if reference_images:
             for idx, ref in enumerate(reference_images):
+                if not ref["reference_image_uri"]:
+                    continue
                 ref_img = None
                 if ref["reference_type"] in ("default", "person", "animal", "product"):
                     ref_img = SubjectReferenceImage(

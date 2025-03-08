@@ -32,8 +32,9 @@ class FirestoreClient:
     def __init__(self) -> None:
         """Instantiates the FirestoreClient."""
         self.project_id = os.environ.get("PROJECT_ID")
-        self.db = firestore.Client(project=self.project_id)
-        self.collection_name = "genmedia-studio"
+        self.database_name = os.environ.get("DB_NAME")
+        self.db = firestore.Client(project=self.project_id, database=self.database_name)
+        self.collection_name = "image-metadata"
 
     def create(
         self,
