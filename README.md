@@ -44,7 +44,7 @@ The architecture is designed for scalability, maintainability, and the ability t
 
 *   A **Google Cloud project**:
     *   `Owner` permissions for the user installing the application
-    *   Configured `OAuth Consent Screen` set to `INTERNAL`.
+    *   Configured `OAuth Consent Screen` set to `INTERNAL`. After installation this can be set to `EXTERNAL` if needed.
     *   Configured `Docker` by running the following once:
         
         `gcloud auth configure-docker us-central1-docker.pkg.dev --quiet`

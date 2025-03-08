@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 config = config_lib.AppConfig()
 
+RESULT_ATTRIBUTES = ["worker", "prompt", "model", "aspect_ratio", "media_uri"]
+
 
 @dataclass
 class SearchResults:
@@ -97,7 +99,9 @@ def content(app_state: me.state) -> None:
                     with me.card_content():
                         del result["media_uri"]
                         me.markdown(
-                            text=format_dict_to_text_nested(result),
+                            text=format_dict_to_text_nested(
+                                extract_key_value_pairs(result, RESULT_ATTRIBUTES)
+                            ),
                             style=me.Style(text_align="left"),
                         )
 
@@ -179,15 +183,14 @@ async def on_enter(event: me.InputEnterEvent) -> AsyncGenerator[Any, Any, Any]:
 def format_nested_dict(input_dict):
     formatted_lines = []
     for key, value in input_dict.items():
-        if key in ("worker", "aspect_ratio", "prompt", "model"):
-            key_str = snake_to_normal(str(key))
-            if isinstance(value, dict):
-                # formatted_lines.append(f"*{key_str}*\n")  # Indent nested keys
-                formatted_lines.extend(
-                    format_nested_dict(value),
-                )  # Recurse for nested dicts
-            else:
-                formatted_lines.append(f"**{key_str}**: {str(value)} \n")
+        key_str = snake_to_normal(str(key))
+        if isinstance(value, dict):
+            # formatted_lines.append(f"*{key_str}*\n")  # Indent nested keys
+            formatted_lines.extend(
+                format_nested_dict(value),
+            )  # Recurse for nested dicts
+        else:
+            formatted_lines.append(f"**{key_str}**: {str(value)} \n")
     return formatted_lines
 
 
@@ -207,3 +210,32 @@ def snake_to_normal(snake_case_string: str) -> str:
     words = snake_case_string.split("_")
     normal_case_words = [word.capitalize() for word in words]
     return " ".join(normal_case_words)
+
+
+def extract_key_value_pairs(data: dict[Any], keys: list[str]) -> dict[str, str]:
+    """
+    Extracts key-value pairs for a set of passed keys from a nested dictionary.
+
+    Args:
+        data (dict): The input dictionary (potentially nested).
+        keys (list[str]): A list of keys to extract.
+
+    Returns:
+        dict[str, str]: A flat dictionary containing the extracted key-value pairs.
+    """
+    result = {}
+
+    def _extract_recursive(current_data: Any):
+        if isinstance(current_data, dict):
+            for key, value in current_data.items():
+                if key in keys:
+                    if isinstance(value, (str, int, float, bool, type(None))):
+                        result[key] = str(value)
+                    else:
+                        result[key] = str(
+                            value,
+                        )  # convert to string any value that is not simple.
+                _extract_recursive(value)
+
+    _extract_recursive(data)
+    return result

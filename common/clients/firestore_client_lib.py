@@ -135,7 +135,11 @@ class FirestoreClient:
             logging.info("FirestoreClient: Got result: %s", result)
             # Remove embeddings from response, since they are
             # large and aren't used after ANN search.
-            keys_to_remove = [key for key in result if "embedding" in key]
+            keys_to_remove = [
+                key
+                for key in result
+                if key in ("image_embeddings", "prompt_embeddings")
+            ]
             for key in keys_to_remove:
                 del result[key]
             if result.get("vector_distance") < max_distance:
@@ -165,3 +169,6 @@ class FirestoreClient:
         except Exception as e:
             logging.exception("Error running query: %s", e)
             raise
+
+
+

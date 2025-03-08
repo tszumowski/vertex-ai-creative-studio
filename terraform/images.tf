@@ -4,6 +4,11 @@ resource "google_artifact_registry_repository" "genmedia_studio" {
   format = "DOCKER"
 }
 
+import {
+  to = google_artifact_registry_repository.genmedia_studio
+  id = "projects/$PROJECT_ID/locations/us-central1/repositories/genmedia-studio"
+}
+
 data "google_artifact_registry_docker_image" "app" {
   location      = google_artifact_registry_repository.genmedia_studio.location
   repository_id = google_artifact_registry_repository.genmedia_studio.repository_id
