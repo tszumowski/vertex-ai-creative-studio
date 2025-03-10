@@ -435,10 +435,11 @@ def content() -> None:
                             )
 
 
-def on_click_edit(event: me.ClickEvent) -> None:
+def on_click_edit(event: me.ClickEvent) -> Generator[Any, Any, Any]:
     del event  # Unused.
     page_state = me.state(EditImagesPageState)
-    me.navigate("/edit", query_params={"upload_uri": page_state.edit_uri})
+    page_state.upload_uri = page_state.edit_uri
+    page_state.edit_uri = ""
 
 
 def on_click_download(event: me.ClickEvent) -> None:
