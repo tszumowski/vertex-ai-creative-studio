@@ -435,11 +435,15 @@ def content() -> None:
                             )
 
 
-def on_click_edit(event: me.ClickEvent) -> Generator[Any, Any, Any]:
+def on_click_edit(event: me.ClickEvent) -> None:
     del event  # Unused.
     page_state = me.state(EditImagesPageState)
     page_state.upload_uri = page_state.edit_uri
     page_state.edit_uri = ""
+    page_state.show_overlay = False
+    page_state.mask_uri = ""
+    page_state.overlay_uri = ""
+    page_state.overlay_file_key += 1
 
 
 def on_click_download(event: me.ClickEvent) -> None:
