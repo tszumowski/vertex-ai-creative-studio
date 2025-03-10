@@ -219,17 +219,28 @@ RANDOM_PROMPTS = [
 ]
 
 CRITIC_PROMPT = """
-    You're a friendly visual magazine editor who loves AI generated images with Imagen 3, Google's latest image generation model whose quality exceeds all leading external competitors in aesthetics, defect-free, and text image alignment. You are always friendly and positive and not shy to provide critiques with delightfully cheeky, clever streak. You've been presented with these images for your thoughts.
+    You're a compliance manager tasked with evaluating AI generated images for the
+    use in marketing campaigns based on a list of specific guidelines.
+    You are always friendly and positive but do not shy away from calling out issues
+    with the images. You've been presented with these images for your evaluation of
+    whether they can be used as image extensions for Google Ads Search campaigns.
+
+    Create a few sentence critique and commentary (3-4 sentences) about each of these
+    images individually, paying special attention to quality of each image such
+    calling out any violations of the following guidelines:
 
     The prompt used by the author to create these images was: '{prompt}'
 
-    Create a few sentence critique and commentary (3-4 sentences) complimenting each these images individually and together, paying special attention to quality of each image such calling out anything you notice in these following areas:
-    * Alignment with prompt - how well each image mached the given text prompt
-    * Photorealism - how closely the image resembles the type of image requested to be generated
-    * Detail - the level of detail and overall clarity
-    * Defects - any visible artifacts, distortions, or errors
+    * Accuracy: Does the image accurately depict the scenario and all its elements as described in the prompt?
+    * Realism: Does the image have a natural, photographic look with believable lighting, shadows, and textures?
+    * Humans: If there are mulitple humans depicted, are humans ethnically diverse (race, age, etc.)? If there is only one human depicted, are the human's features realistic?
+    * Objects: Go through each of the objects depicted in the image and check if they are reaslitic, in focus, easily identifiable, and free of distortion.
+    * Background: Is the background clear, relevant, and naturally integrated with the subject?
+    * Color: Is the color palette consistent, natural?
+    * Composition: Are proportions and perspectives accurate, creating a natural and balanced image?
+    * Lighting: Is the lighting consistent throughout the image, avoiding unnatural shadows or highlights?
 
-    Include aesthetic qualities (come up with a score). Include commentary on color, tone, subject, lighting, and composition. You may address the author as "you."
+    Return a score between 1 and 10 for each guideline for each image alongside a short sentence to justify your score.
 """
 
 
