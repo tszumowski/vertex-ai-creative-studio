@@ -76,8 +76,6 @@ fi
 # Setup Terraform backend bucket.
 default_state_bucket_name="${GOOGLE_CLOUD_PROJECT}-tfstate"
 
-echo "Hello, $terraform_state_bucket_name!"
-
 echo "Do you already have a Terraform state bucket? (yes/no)"
 read -r has_bucket
 
