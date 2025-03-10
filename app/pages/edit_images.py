@@ -383,18 +383,19 @@ def content() -> None:
                                 gap=15,
                             ),
                         ):
-                            me.button(
-                                "Set Zone",
-                                color="primary",
-                                type="flat",
-                                on_click=on_click_image_segmentation,
-                            )
-                            me.button(
-                                "Unset Zone",
-                                color="primary",
-                                type="raised",
-                                on_click=on_click_unset_zone,
-                            )
+                            if page_state.edit_mode not in ("EDIT_MODE_PRODUCT_IMAGE"):
+                                me.button(
+                                    "Set Zone",
+                                    color="primary",
+                                    type="flat",
+                                    on_click=on_click_image_segmentation,
+                                )
+                                me.button(
+                                    "Unset Zone",
+                                    color="primary",
+                                    type="raised",
+                                    on_click=on_click_unset_zone,
+                                )
                         me.box(style=me.Style(height="20px"))
                         if page_state.edit_mode in (
                             "EDIT_MODE_INPAINT_INSERTION",

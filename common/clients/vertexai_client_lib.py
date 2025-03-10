@@ -411,6 +411,10 @@ class VertexAIClient:
                 )
                 reference_images = [control_image]
 
+            if edit_mode == EditMode.EDIT_MODE_PRODUCT_IMAGE.name:
+                raw_ref_image = RawReferenceImage(image=image, reference_id=0)
+                reference_images = [raw_ref_image]
+
             edited_image = edit_model.edit_image(
                 prompt=prompt,
                 edit_mode=EditMode[edit_mode].value,

@@ -55,14 +55,12 @@ EDIT_MODE_OPTIONS = [
         label="Remove - Erase selected object(s)",
         value="EDIT_MODE_INPAINT_REMOVAL",
     ),
-    # Not available, yet.
     # me.SelectOption(
     #    label="Product showcase - Place a product in a new scene",
     #    value="EDIT_MODE_PRODUCT_IMAGE",
     # ),
-    #
     me.SelectOption(
-        label="Change the background.",
+        label="Product showcase / Change the background.",
         value="EDIT_MODE_BGSWAP",
     ),
     me.SelectOption(

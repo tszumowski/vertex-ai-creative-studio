@@ -345,7 +345,7 @@ def content(app_state: me.state) -> None:
                                                     "https://storage.mtls.cloud.google.com/",
                                                 ),
                                                 style=me.Style(
-                                                    width="40px",
+                                                    height="40px",
                                                     margin=me.Margin(top=1),
                                                     border_radius="10px",
                                                 ),

@@ -43,19 +43,18 @@ The architecture is designed for scalability, maintainability, and the ability t
 ### Prerequisites
 
 *   A **Google Cloud project**:
-    *   `Owner` permissions for the user installing the application
+    *   A Google Cloud Project with `Owner` permissions and Billing enabled.
     *   Configured `OAuth Consent Screen` set to `INTERNAL`. After installation this can be set to `EXTERNAL` if needed.
     *   Configured `Docker` by running the following once:
         
         `gcloud auth configure-docker us-central1-docker.pkg.dev --quiet`
 
+    *   Optional: Access / Allowlisted for the Imagen3 Capability model (Required for Image Editing) - [Form](https://docs.google.com/forms/d/e/1FAIpQLScN9KOtbuwnEh6pV7xjxib5up5kG_uPqnBtJ8GcubZ6M3i5Cw/viewform)
+    *   Optional: Access / Allowlisted for Imagen3 people generation - [Form](https://docs.google.com/forms/d/e/1FAIpQLSduBp9w84qgim6vLriQ9p7sdz62bMJaL-nNmIVoyiOwd84SMw/viewform).
+
 ### Installation
 
-```
-git clone <repo_url>
-cd genmedia-studio
-gcloud builds submit --config cloudbuild.yaml .
-```
+[![Deploy in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatforms%2Fvertex-ai-creative-studio&cloudshell_git_branch=latest&cloudshell_tutorial=INSTALL.md&show=terminal)
 
 ## Disclaimer
 

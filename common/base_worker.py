@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import abc
+import os
 from typing import Any
 
+import cloud_detect
+import tadau as tadau_lib
 from absl import logging
+
 from common.clients import firestore_client_lib
 
 
@@ -21,6 +25,15 @@ class BaseWorker(abc.ABC):
         """
         self.settings = settings
         self.firestore_client = firestore_client_lib.FirestoreClient()
+        self.tadau_client = tadau_lib.Tadau(
+            api_secret="DV9DIB-zThOVZBOMB0oFUg",
+            measurement_id="G-M99NE04QRK",
+            opt_in=True,
+            fixed_dimensions={
+                "deploy_id": f"genmedia_studio_{os.environ.get('PROJECT_ID')}",
+                "deploy_infra": cloud_detect.provider(),
+            },
+        )
         self._error_msg = ""
         self._warning_msg = ""
         logging.info("Initialized worker: %s.", self.name)

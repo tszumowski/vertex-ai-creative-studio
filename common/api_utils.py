@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import aiohttp
@@ -63,3 +64,13 @@ async def make_authenticated_request_with_handled_exception(
                 return response
     except Exception as e:
         raise await handle_exceptions(e) from e
+
+
+def stringify_values(data: dict[str, Any]) -> dict[str, str]:
+    new_dict = {}
+    for key, value in data.items():
+        if isinstance(value, (str, int, float, bool, type(None))):
+            new_dict[key] = str(value)
+        elif isinstance(value, (dict, list, tuple)):
+            new_dict[key] = json.dumps(value)
+    return new_dict

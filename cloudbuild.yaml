@@ -1,28 +1,12 @@
 steps:
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: 'bash'
-  args:
-    - '-c'
-    - |
-      # Check if the repository exists
-      if gcloud artifacts repositories describe genmedia-studio --location=us-central1 --format="value(name)" 2>/dev/null; then
-        echo "Repository genmedia-studio already exists in us-central1. Skipping creation."
-      else
-        echo "Repository genmedia-studio does not exist in us-central1. Creating..."
-        gcloud artifacts repositories create genmedia-studio \
-          --location=us-central1 \
-          --repository-format=docker \
-          --description="Docker repository for Creative Studio services" || exit 1
-      fi
-
-- name: docker/compose:1.29.2
-  args: ['-f', 'docker-compose.yml', 'build']
-  env:
-    - 'PROJECT_ID=$PROJECT_ID'
-- name: 'docker/compose:1.29.2'
-  args: ['-f', 'docker-compose.yml', 'push']
-  env:
-    - 'PROJECT_ID=$PROJECT_ID'
+#- name: docker/compose:1.29.2
+#  args: ['-f', 'docker-compose.yml', 'build']
+#  env:
+#    - 'PROJECT_ID=$PROJECT_ID'
+#- name: 'docker/compose:1.29.2'
+#  args: ['-f', 'docker-compose.yml', 'push']
+#  env:
+#    - 'PROJECT_ID=$PROJECT_ID'
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'create tfvars'
   dir: 'terraform'
@@ -47,7 +31,7 @@ steps:
   - '-c'
   - |
       terraform init \
-      -backend-config="bucket=$PROJECT_ID-bucket-tfstate" \
+      -backend-config="bucket=$_TF_STATE_BUCKET" \
       -backend-config="prefix=genmedia-studio" \
       -get=true \
       -upgrade \
@@ -59,4 +43,12 @@ steps:
   args:
   - '-c'
   - |
-      terraform apply -var-file="./terraform.tfvars" -auto-approve -lock=false
+      terraform plan -var-file="./terraform.tfvars" -out="./tfplan"
+- id: 'tf apply'
+  name: 'hashicorp/terraform:1.10.0'
+  entrypoint: 'sh'
+  dir: terraform
+  args:
+  - '-c'
+  - |
+      terraform apply "./tfplan"
