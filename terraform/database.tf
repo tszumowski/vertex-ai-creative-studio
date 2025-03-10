@@ -1,5 +1,5 @@
 resource "google_storage_bucket" "images" {
-  name          = format("%s-%s", var.project_id, "images")
+  name          = var.media_bucket
   location      = var.region
   project       = var.project_id
 
