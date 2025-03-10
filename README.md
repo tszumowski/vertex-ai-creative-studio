@@ -54,7 +54,7 @@ The architecture is designed for scalability, maintainability, and the ability t
 
 ### Installation
 
-[![Deploy in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Finternal-aaie-964960824289-git.us-central1.sourcemanager.dev%2Fsourcerepo-genai-sa%2Fvertex-ai-creative-studio&cloudshell_git_branch=latest&cloudshell_tutorial=INSTALL.md&show=terminal)
+[![Deploy in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatforms%2Fvertex-ai-creative-studio&cloudshell_git_branch=latest&cloudshell_tutorial=INSTALL.md&show=terminal)
 
 
 ## Disclaimer
