@@ -6,12 +6,15 @@ resource "google_cloud_run_v2_service" "app" {
 
   template {
     scaling {
-      min_instance_count = 1
+      min_instance_count = 0
       max_instance_count = 10
     }
     service_account = google_service_account.app_sa.email
     containers {
       image = data.google_artifact_registry_docker_image.app.self_link
+      resources {
+        startup_cpu_boost = true
+      }
       env {
         name  = "PROJECT_ID"
         value = var.project_id
@@ -40,7 +43,7 @@ resource "google_cloud_run_v2_service" "api_gateway" {
 
   template {
     scaling {
-      min_instance_count = 1
+      min_instance_count = 0
       max_instance_count = 10
     }
     service_account = google_service_account.api_gateway_sa.email
@@ -49,6 +52,9 @@ resource "google_cloud_run_v2_service" "api_gateway" {
         container_port = 8000
       }
       image = data.google_artifact_registry_docker_image.api_gateway.self_link
+      resources {
+        startup_cpu_boost = true
+      }
       env {
         name  = "PROJECT_ID"
         value = var.project_id
@@ -77,7 +83,7 @@ resource "google_cloud_run_v2_service" "file_service" {
 
   template {
     scaling {
-      min_instance_count = 1
+      min_instance_count = 0
       max_instance_count = 10
     }
     service_account = google_service_account.file_service_sa.email
@@ -86,6 +92,9 @@ resource "google_cloud_run_v2_service" "file_service" {
         container_port = 8000
       }
       image = data.google_artifact_registry_docker_image.file_service.self_link
+      resources {
+        startup_cpu_boost = true
+      }
       env {
         name  = "PROJECT_ID"
         value = var.project_id
@@ -118,7 +127,7 @@ resource "google_cloud_run_v2_service" "generation_service" {
 
   template {
     scaling {
-      min_instance_count = 1
+      min_instance_count = 0
       max_instance_count = 10
     }
     service_account = google_service_account.generation_service_sa.email
@@ -127,6 +136,9 @@ resource "google_cloud_run_v2_service" "generation_service" {
         container_port = 8000
       }
       image = data.google_artifact_registry_docker_image.generation_service.self_link
+      resources {
+        startup_cpu_boost = true
+      }
       env {
         name  = "PROJECT_ID"
         value = var.project_id

@@ -1,12 +1,12 @@
 steps:
-- name: docker/compose:1.29.2
-  args: ['-f', 'docker-compose.yml', 'build']
-  env:
-    - 'PROJECT_ID=$PROJECT_ID'
-- name: 'docker/compose:1.29.2'
-  args: ['-f', 'docker-compose.yml', 'push']
-  env:
-    - 'PROJECT_ID=$PROJECT_ID'
+#- name: docker/compose:1.29.2
+#  args: ['-f', 'docker-compose.yml', 'build']
+#  env:
+#    - 'PROJECT_ID=$PROJECT_ID'
+#- name: 'docker/compose:1.29.2'
+#  args: ['-f', 'docker-compose.yml', 'push']
+#  env:
+#    - 'PROJECT_ID=$PROJECT_ID'
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   id: 'create tfvars'
   dir: 'terraform'
