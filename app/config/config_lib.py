@@ -25,4 +25,7 @@ class AppConfig:
         self.api_gateway_url = (
             f"https://genmedia-api-gateway-{self.project_number}.{self.region}.run.app"
         )
+        self.app_url = (
+            f"https://genmedia-app-{self.project_number}.{self.region}.run.app"
+        )
         self.default_image_model = "imagen-3.0-fast-generate-001"

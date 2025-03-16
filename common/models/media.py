@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 from google.cloud.firestore_v1.vector import Vector
+from vertexai.preview.vision_models import Image
 
 from common.clients import vertexai_client_lib
 
@@ -16,22 +18,23 @@ class GenMedia:
     ) -> None:
         self.media_uri = media_uri
         self.worker = worker
-        self.generation_params = {}
-        for key, value in kwargs.items():
-            if key not in [
-                "media_uri",
-            ]:
-                self.generation_params[key] = value
+        self.prompt = kwargs.get("prompt")
+        self.model = kwargs.get("model")
+        self.aspect_ratio = kwargs.get("aspect_ratio")
         self.image_embeddings = None
         self.prompt_embeddings = None
+        self.timestamp = datetime.datetime.now(
+            datetime.timezone.utc,
+        )
+        self.format = Image(gcs_uri=media_uri)._mime_type
+        self.width, self.height = Image(gcs_uri=media_uri)._size
+        self._generate_vectors()
 
-        self._generate_metadata()
-
-    def _generate_metadata(self) -> None:
+    def _generate_vectors(self) -> None:
         vertexai_client = vertexai_client_lib.VertexAIClient()
         image_embeddings, prompt_embeddings = vertexai_client.get_embeddings(
             self.media_uri,
-            self.generation_params.get("prompt"),
+            self.prompt,
         )
         if image_embeddings:
             self.image_embeddings = Vector(image_embeddings)

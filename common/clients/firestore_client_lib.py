@@ -110,7 +110,6 @@ class FirestoreClient:
     def nn_search(
         self,
         embedding: list[float],
-        max_distance: float | None = 0.75,
     ) -> list[dict[str, Any]]:
         """Runs a nearest neigbor search against image embeddings in the collection.
 
@@ -142,8 +141,7 @@ class FirestoreClient:
             ]
             for key in keys_to_remove:
                 del result[key]
-            if result.get("vector_distance") < max_distance:
-                results.append(result)
+            results.append(result)
         logging.info("FirestoreClient: Got results: %s", results)
         return sorted(results, key=lambda item: item["vector_distance"])
 

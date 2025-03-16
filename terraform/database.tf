@@ -37,3 +37,19 @@ resource "google_firestore_index" "vector-index" {
     }
   }
 }
+
+resource "google_firestore_index" "timestamp-index" {
+  project     = var.project_id
+  database   = google_firestore_database.database.name
+  collection = "image-metadata"
+
+  fields {
+    field_path = "timestamp"
+    order      = "DESCENDING"
+  }
+
+  fields {
+    field_path = "__name__"
+    order      = "ASCENDING"
+  }
+}

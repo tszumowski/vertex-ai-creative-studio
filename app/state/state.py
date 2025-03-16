@@ -8,8 +8,6 @@ class AppState:
 
     theme_mode: str = "light"
     sidenav_open: bool = True
-    welcome_message: str = ""
-    name: str = "World"
 
     rewriter_prompt: str = ""
     rewriter_prompt_placeholder: str = constants.REWRITER_PROMPT.strip()
@@ -17,3 +15,5 @@ class AppState:
 
     critic_prompt: str = ""
     critic_prompt_placeholder: str = constants.CRITIC_PROMPT.strip()
+
+    user: str = ""

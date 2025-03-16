@@ -329,8 +329,7 @@ class VertexAIClient:
         prompt: str,
         number_of_images: int,
         edit_mode: str,
-        mask_mode: str,
-        mask_uri: str,
+        mask_uri: str | None = None,
         model: str | None = IMAGEN_EDIT_MODEL,
     ) -> str:
         """Edits and image.
@@ -357,38 +356,24 @@ class VertexAIClient:
 
             image = Image(gcs_uri=image_uri)
             mask = Image(gcs_uri=mask_uri) if mask_uri else None
-            seed = None
-            if edit_mode == EditMode.EDIT_MODE_OUTPAINT.name:
-                raw_ref_image = RawReferenceImage(
-                    image=image,
-                    reference_id=0,
-                )
-                mask_ref_image = MaskReferenceImage(
-                    reference_id=1,
-                    image=mask,
-                    mask_mode="user_provided",
-                    dilation=0.03,
-                )
-                reference_images = [raw_ref_image, mask_ref_image]
+            seed = 1
+            dilation = 0.01
             if edit_mode == EditMode.EDIT_MODE_BGSWAP.name:
-                raw_ref_image = RawReferenceImage(image=image, reference_id=0)
-                mask_ref_image = MaskReferenceImage(
-                    reference_id=1,
-                    image=mask,
-                    mask_mode="background",
-                )
-                seed = 1
-                reference_images = [raw_ref_image, mask_ref_image]
+                dilation = 0.0
+            if edit_mode == EditMode.EDIT_MODE_OUTPAINT.name:
+                dilation = 0.03
             if edit_mode in (
                 EditMode.EDIT_MODE_INPAINT_INSERTION.name,
                 EditMode.EDIT_MODE_INPAINT_REMOVAL.name,
+                EditMode.EDIT_MODE_OUTPAINT.name,
+                EditMode.EDIT_MODE_BGSWAP.name,
             ):
                 raw_ref_image = RawReferenceImage(image=image, reference_id=0)
                 mask_ref_image = MaskReferenceImage(
                     reference_id=1,
                     image=mask,
-                    mask_mode=mask_mode,
-                    dilation=0.1,
+                    mask_mode="user_provided",
+                    dilation=dilation,
                 )
                 reference_images = [raw_ref_image, mask_ref_image]
 

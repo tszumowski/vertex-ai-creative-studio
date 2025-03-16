@@ -1,28 +1,30 @@
-"""Dialog mesop component"""
-
-from __future__ import annotations
-
 from typing import Callable
 
 import mesop as me
 
 
 @me.content_component
-def dialog(*, is_open: bool, on_click_background: Callable | None = None) -> None:  # pylint: disable=not-context-manager
-    """renders a dialog component"""
+def dialog(*, is_open: bool, on_click_background: Callable | None = None):
+    """Renders a dialog component.
+
+    The design of the dialog borrows from the Angular component dialog. So basically
+    rounded corners and some box shadow.
+
+    Args:
+      is_open: Whether the dialog is visible or not.
+      on_click_background: Event handler for when background is clicked
+    """
     with me.box(
         style=me.Style(
-            background=(
-                "rgba(0, 0, 0, 0.4)"
-                if me.theme_brightness() == "light"
-                else "rgba(255, 255, 255, 0.4)"
-            ),
+            background="rgba(0, 0, 0, 0.4)"
+            if me.theme_brightness() == "light"
+            else "rgba(255, 255, 255, 0.4)",
             display="block" if is_open else "none",
             height="100%",
-            width="100%",
             overflow_x="auto",
             overflow_y="auto",
             position="fixed",
+            width="100%",
             z_index=1000,
         ),
     ):
@@ -31,7 +33,7 @@ def dialog(*, is_open: bool, on_click_background: Callable | None = None) -> Non
             style=me.Style(
                 place_items="center",
                 display="grid",
-                height="50vh",
+                height="100vh",
             ),
         ):
             with me.box(
@@ -47,3 +49,18 @@ def dialog(*, is_open: bool, on_click_background: Callable | None = None) -> Non
                 )
             ):
                 me.slot()
+
+
+@me.content_component
+def dialog_actions():
+    """Helper component for rendering action buttons so they are right aligned.
+
+    This component is optional. If you want to position action buttons differently,
+    you can just write your own Mesop markup.
+    """
+    with me.box(
+        style=me.Style(
+            display="flex", justify_content="end", gap=5, margin=me.Margin(top=20)
+        )
+    ):
+        me.slot()

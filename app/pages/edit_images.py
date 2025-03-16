@@ -194,27 +194,29 @@ def content() -> None:
                                     me.progress_spinner()
                             else:
                                 if page_state.edit_uri:
-                                    me.image(
-                                        src=page_state.edit_uri.replace(
-                                            "gs://",
-                                            "https://storage.mtls.cloud.google.com/",
-                                        ),
-                                        style=me.Style(
-                                            height="400px",
-                                            border_radius=12,
-                                            justify_content="center",
-                                            display="flex",
-                                        ),
-                                    )
-                                    with me.card_actions(align="end"):
-                                        me.button(
-                                            label="Download",
-                                            on_click=on_click_download,
+                                    for idx, uri in enumerate([page_state.edit_uri]):
+                                        me.image(
+                                            src=uri.replace(
+                                                "gs://",
+                                                "https://storage.mtls.cloud.google.com/",
+                                            ),
+                                            style=me.Style(
+                                                height="400px",
+                                                border_radius=12,
+                                                justify_content="center",
+                                                display="flex",
+                                            ),
+                                            key=f"edit_{idx}",
                                         )
-                                        me.button(
-                                            label="Edit",
-                                            on_click=on_click_edit,
-                                        )
+                                        with me.card_actions(align="end"):
+                                            me.button(
+                                                label="Download",
+                                                on_click=on_click_download,
+                                            )
+                                            me.button(
+                                                label="Edit",
+                                                on_click=on_click_edit,
+                                            )
                                 else:
                                     me.box(
                                         style=me.Style(
@@ -684,7 +686,6 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
         "prompt": state.prompt_input,
         "number_of_images": 1,
         "edit_mode": state.edit_mode,
-        "mask_mode": state.mask_mode,
         "mask_uri": state.mask_uri,
     }
     logging.info("Making request with payload %s", payload)
@@ -707,6 +708,7 @@ async def on_click_image_edit(event: me.ClickEvent) -> AsyncGenerator[Any, Any, 
     del event  # Unused.
     state = me.state(EditImagesPageState)
     state.is_loading = True
+    state.edit_uri = ""
     yield
     state.edit_uri = await send_image_editing_request(state)
     state.is_loading = False

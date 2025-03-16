@@ -34,7 +34,6 @@ class EditImageRequest(BaseModel):
     prompt: str
     number_of_images: int = 1
     edit_mode: str = ""
-    mask_mode: str = "foreground"
     mask_uri: str = ""
 
 

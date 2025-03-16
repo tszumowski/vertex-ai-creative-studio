@@ -2,10 +2,16 @@
 
 import base64
 import os
+from urllib.parse import urlparse
 
 import google.auth
 from absl import logging
-from google.cloud import storage
+from google.auth import compute_engine
+from google.auth.transport import requests
+from google.cloud import exceptions, storage
+import mimetypes
+
+_DEFAULT_URL_EXPIRATION_SECONDS = 3600
 
 
 class StorageClientError(Exception):
@@ -18,6 +24,13 @@ class StorageClient:
     def __init__(self) -> None:
         credentials, project = google.auth.default()
         self._client = storage.Client(project=project, credentials=credentials)
+        auth_request = requests.Request()
+        credentials.refresh(request=auth_request)
+        self._signing_credentials = compute_engine.IDTokenCredentials(
+            auth_request,
+            "",
+            service_account_email=credentials.service_account_email,
+        )
         logging.info("StorageClient: Instantiated.")
 
     def upload(
@@ -56,22 +69,80 @@ class StorageClient:
                 f"StorageClient: Could not upload file {ex}",
             ) from ex
 
-    def download_as_string(self, bucket_name: str, file_path: str) -> str:
+    def download_as_string(self, gcs_uri: str) -> tuple[str, str, str]:
         """Downloads a file as string.
 
         Args:
-            bucket_name: A GCS bucket.
-            file_path: The path to the file within the bucket.
+            gcs_uri: The GCS URI of the blob (e.g., gs://bucket-name/path/to/file.txt).
 
         Returns:
-            The b64 encodeded string.
+            The b64 encodeded string and it's mimetype and file name.
         """
         try:
+            parsed_uri = urlparse(gcs_uri)
+        except Exception as e:
+            raise StorageClientError("Invalid URI: %s. Error: %s", gcs_uri, e) from e
+
+        if parsed_uri.scheme != "gs":
+            raise StorageClientError(
+                "Invalid GCS URI: %s. Must start with 'gs://'",
+                gcs_uri,
+            )
+
+        bucket_name = parsed_uri.netloc
+        blob_name = parsed_uri.path.lstrip("/")  # Remove leading slash
+        mimetype = mimetypes.guess_type(gcs_uri)[0]
+        file_name = os.path.basename(gcs_uri)
+        try:
+            parsed_uri = urlparse(gcs_uri)
             bucket = self._client.bucket(bucket_name)
-            blob = bucket.blob(file_path)
+            blob = bucket.blob(blob_name)
             content = blob.download_as_bytes()
-            return base64.b64encode(content).decode("utf-8")
+            return (base64.b64encode(content).decode("utf-8"), mimetype, file_name)
         except Exception as ex:
             raise StorageClientError(
                 f"StorageClient: Could not download file {ex}",
             ) from ex
+
+    def get_signed_download_url_from_gcs_uri(self, gcs_uri: str) -> str:
+        """Retrieves a GCS blob from a gs:// URI.
+
+        Args:
+            gcs_uri: The GCS URI of the blob (e.g., gs://bucket-name/path/to/file.txt).
+
+        Returns:
+            A google.cloud.storage.blob.Blob object, or None if the blob is not found.
+        Raises:
+            StorageClientError: If the URI is invalid or not a GCS URI.
+            StorageClientError: If the client could not generate a signed url.
+        """
+
+        try:
+            parsed_uri = urlparse(gcs_uri)
+        except Exception as e:
+            raise StorageClientError("Invalid URI: %s. Error: %s", gcs_uri, e) from e
+
+        if parsed_uri.scheme != "gs":
+            raise StorageClientError(
+                "Invalid GCS URI: %s. Must start with 'gs://'",
+                gcs_uri,
+            )
+        bucket_name = parsed_uri.netloc
+        blob_name = parsed_uri.path.lstrip("/")  # Remove leading slash
+        try:
+            bucket = self._client.bucket(bucket_name)
+            blob = bucket.blob(blob_name)
+            return blob.generate_signed_url(
+                expiration=_DEFAULT_URL_EXPIRATION_SECONDS,
+                credentials=self._signing_credentials,
+                version="v4",
+            )
+        except exceptions.ClientError as ce:
+            logging.error(
+                "Could not generate signed url from uri %s",
+                gcs_uri,
+            )
+            raise StorageClientError(
+                "Could not generated signed url. Error: %s",
+                ce,
+            ) from ce

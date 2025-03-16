@@ -8,12 +8,13 @@ from pydantic import BaseModel
 
 
 class DownloadFileRequest(BaseModel):
-    bucket_name: str
-    file_path: str
+    gcs_uri: str
 
 
 class DownloadFileResponse(BaseModel):
-    file_string: str
+    content: str
+    mimetype: str
+    filename: str
 
 
 class UploadFileRequest(BaseModel):

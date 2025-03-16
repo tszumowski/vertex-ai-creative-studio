@@ -124,7 +124,7 @@ async def upscale_image(request: Request) -> str:
 
 
 @app.post("/files/download")
-async def download(request: Request) -> str:
+async def download(request: Request) -> dict[str, str]:
     """Exposes the file download endpoint through the API Gateway."""
     logging.info("API Gateway: Received request: %s", request)
     data = await request.json()
@@ -135,8 +135,7 @@ async def download(request: Request) -> str:
         service_url=_FILE_SERVICE_URL,
     )
     logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("file_string")
+    return await response.json()
 
 
 @app.post("/files/upload")
@@ -163,6 +162,22 @@ async def search(request: Request) -> list[dict[str, Any]]:
     response = await api_utils.make_authenticated_request_with_handled_exception(
         method="POST",
         url=f"{_FILE_SERVICE_URL}/search",
+        json_data=data,
+        service_url=_FILE_SERVICE_URL,
+    )
+    logging.info("API Gateway: Received response: %s", await response.json())
+    data = await response.json()
+    return data.get("results")
+
+
+@app.post("/files/list")
+async def list_all(request: Request) -> list[dict[str, Any]]:
+    """Exposes the file search endpoint through the API Gateway."""
+    logging.info("API Gateway: Received request: %s", request)
+    data = await request.json()
+    response = await api_utils.make_authenticated_request_with_handled_exception(
+        method="POST",
+        url=f"{_FILE_SERVICE_URL}/list",
         json_data=data,
         service_url=_FILE_SERVICE_URL,
     )

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING, Any
 
 import mesop as me
 from absl import logging
+from components.dialog import dialog, dialog_actions
 from config import config_lib
-from pydantic.dataclasses import dataclass
 from state import state
 from utils import auth_request
 
@@ -15,15 +15,16 @@ if TYPE_CHECKING:
 
 config = config_lib.AppConfig()
 
-RESULT_ATTRIBUTES = ["worker", "prompt", "model", "aspect_ratio", "media_uri"]
-
-
-@dataclass
-class SearchResults:
-    vector_distance: float
-    worker: str
-    media_uri: str
-    generation_params: dict[str, Any]
+RESULT_ATTRIBUTES = [
+    "worker",
+    "prompt",
+    "model",
+    "aspect_ratio",
+    "format",
+    "width",
+    "height",
+    "timestamp",
+]
 
 
 @me.stateclass
@@ -31,6 +32,12 @@ class HistoryPageState:
     """Local Page State"""
 
     is_loading: bool = False
+    is_open: bool = False
+    dialog_data: str = ""
+    dialog_index: int = 0
+    download_content: str = ""
+    download_mimetype: str = ""
+    download_filename: str = ""
     image_results: str = ""
 
     input: str = ""
@@ -39,6 +46,42 @@ class HistoryPageState:
 def content(app_state: me.state) -> None:
     app_state = me.state(state.AppState)
     page_state = me.state(HistoryPageState)
+
+    with dialog(
+        is_open=page_state.is_open,
+        on_click_background=on_click_close_background,
+    ):
+        with me.box(
+            style=me.Style(
+                position="fixed",  # Fixed positioning to overlay content
+                top="50%",  # Center vertically
+                left="50%",  # Center horizontally
+                transform="translate(-50%, -50%)",  # Adjust for centering
+                width="40%",  # 20% of the viewport width
+                min_width="200px",  # Minimum width to prevent it from becoming too small.
+                background="white",
+                border_radius="8px",
+                padding=me.Padding.all(15),
+                box_shadow="0 4px 8px rgba(0, 0, 0, 0.2)",  # Subtle shadow
+            ),
+        ):
+            if page_state.dialog_data:
+                me.text("Explore Metadata", type="headline-4")
+                for element in RESULT_ATTRIBUTES:
+                    for key, value in json.loads(page_state.dialog_data).items():
+                        if key == element:
+                            me.markdown(f"<b>{snake_to_normal(key)}:</b> {value}")
+                with dialog_actions():
+                    me.button(
+                        label="Edit",
+                        key=f"edit_{page_state.dialog_index}",
+                        on_click=on_click_edit,
+                    )
+                    with me.content_button():
+                        me.html(
+                            html=f"""<a href="data:{page_state.download_mimetype};base64,{page_state.download_content}" download="{page_state.download_filename}">Download</a>""",
+                            style=me.Style(text_decoration="none"),
+                        )
 
     with me.box(
         style=me.Style(
@@ -82,40 +125,42 @@ def content(app_state: me.state) -> None:
                     "gs://",
                     "https://storage.mtls.cloud.google.com/",
                 )
-                with me.card(
-                    appearance="outlined",
-                    style=me.Style(
-                        width="330px",
-                    ),
-                ):
+                with me.box(
+                    style=me.Style(position="relative", display="inline-block"),
+                ):  # the box that contains the image and icon.
                     me.image(
                         src=f"{media_url}",
                         style=me.Style(
-                            width="300px",
-                            margin=me.Margin(top=10),
-                            border_radius="35px",
+                            height="200px",
+                            border_radius="10px",
                         ),
                     )
-                    with me.card_content():
-                        del result["media_uri"]
-                        me.markdown(
-                            text=format_dict_to_text_nested(
-                                extract_key_value_pairs(result, RESULT_ATTRIBUTES)
+                    with me.content_button(
+                        on_click=on_click_dialog_open,
+                        type="icon",
+                        style=me.Style(
+                            position="absolute",
+                            top="10px",
+                            right="10px",
+                            z_index=1,
+                            min_width="0px",
+                        ),
+                        key=f"info_{idx}",
+                    ):
+                        me.icon(
+                            icon="info",
+                            style=me.Style(
+                                color="primary",
+                                background="white",
+                                border_radius="100%",
                             ),
-                            style=me.Style(text_align="left"),
                         )
 
-                    with me.card_actions(align="end"):
-                        me.button(
-                            label="Download",
-                            on_click=on_click_download,
-                            key=f"download_{idx}",
-                        )
-                        me.button(
-                            label="Edit",
-                            key=f"edit_{idx}",
-                            on_click=on_click_edit,
-                        )
+
+def on_click_close_background(e: me.ClickEvent) -> None:
+    state = me.state(HistoryPageState)
+    if e.is_target:
+        state.is_open = False
 
 
 def on_click_edit(event: me.ClickEvent) -> None:
@@ -124,17 +169,6 @@ def on_click_edit(event: me.ClickEvent) -> None:
     result = json.loads(page_state.image_results)[img_idx]
     media_uri = result.get("media_uri")
     me.navigate("/edit", query_params={"upload_uri": media_uri})
-
-
-def on_click_download(event: me.ClickEvent) -> None:
-    page_state = me.state(HistoryPageState)
-    img_idx = int(event.key.split("_")[1])
-    result = json.loads(page_state.image_results)[img_idx]
-    target = result.get("media_uri").replace(
-        "gs://",
-        "https://storage.mtls.cloud.google.com/",
-    )
-    me.navigate(target)
 
 
 def get_logo(state: state.AppState) -> str:
@@ -147,6 +181,35 @@ def on_blur(event: me.InputBlurEvent) -> None:
     state = me.state(HistoryPageState)
     state.input = ""
     state.input = event.value
+
+
+async def on_click_dialog_open(e: me.ClickEvent) -> None:
+    state = me.state(HistoryPageState)
+    state.is_open = True
+    idx = int(e.key.split("_")[1])
+    info = json.loads(state.image_results)[idx]
+    state.dialog_data = json.dumps(info)
+    state.dialog_index = idx
+
+    image = json.loads(state.image_results)[idx]
+    media_uri = image.get("media_uri")
+    payload = {
+        "gcs_uri": media_uri,
+    }
+    logging.info("Making request with payload %s", payload)
+    response = await auth_request.make_authenticated_request(
+        method="POST",
+        url=f"{config.api_gateway_url}/files/download",
+        json_data=payload,
+        service_url=config.api_gateway_url,
+    )
+    try:
+        data = await response.json()
+        state.download_content = data["content"]
+        state.download_mimetype = data["mimetype"]
+        state.download_filename = data["filename"]
+    except Exception as e:
+        logging.exception("Something went wrong generating download URL: %s", e)
 
 
 async def send_image_search_request(state: HistoryPageState) -> list[str]:
@@ -180,24 +243,6 @@ async def on_enter(event: me.InputEnterEvent) -> AsyncGenerator[Any, Any, Any]:
     yield
 
 
-def format_nested_dict(input_dict):
-    formatted_lines = []
-    for key, value in input_dict.items():
-        key_str = snake_to_normal(str(key))
-        if isinstance(value, dict):
-            # formatted_lines.append(f"*{key_str}*\n")  # Indent nested keys
-            formatted_lines.extend(
-                format_nested_dict(value),
-            )  # Recurse for nested dicts
-        else:
-            formatted_lines.append(f"**{key_str}**: {str(value)} \n")
-    return formatted_lines
-
-
-def format_dict_to_text_nested(input_dict: dict[Any]):
-    return "\n".join(format_nested_dict(input_dict))
-
-
 def snake_to_normal(snake_case_string: str) -> str:
     """Converts a lower_snake_case string to Normal Case.
 
@@ -210,32 +255,3 @@ def snake_to_normal(snake_case_string: str) -> str:
     words = snake_case_string.split("_")
     normal_case_words = [word.capitalize() for word in words]
     return " ".join(normal_case_words)
-
-
-def extract_key_value_pairs(data: dict[Any], keys: list[str]) -> dict[str, str]:
-    """
-    Extracts key-value pairs for a set of passed keys from a nested dictionary.
-
-    Args:
-        data (dict): The input dictionary (potentially nested).
-        keys (list[str]): A list of keys to extract.
-
-    Returns:
-        dict[str, str]: A flat dictionary containing the extracted key-value pairs.
-    """
-    result = {}
-
-    def _extract_recursive(current_data: Any):
-        if isinstance(current_data, dict):
-            for key, value in current_data.items():
-                if key in keys:
-                    if isinstance(value, (str, int, float, bool, type(None))):
-                        result[key] = str(value)
-                    else:
-                        result[key] = str(
-                            value,
-                        )  # convert to string any value that is not simple.
-                _extract_recursive(value)
-
-    _extract_recursive(data)
-    return result

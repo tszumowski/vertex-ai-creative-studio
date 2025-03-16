@@ -75,7 +75,7 @@ class GenerateImagesPageState:
     commentary: str = ""
 
 
-def content(app_state: me.state) -> None:
+def content(app_state: AppState) -> None:
     """Generate Images Page"""
     page_state = me.state(GenerateImagesPageState)
     page_state.rewriter_prompt = app_state.rewriter_prompt

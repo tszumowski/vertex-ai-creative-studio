@@ -1,7 +1,6 @@
 mesop==0.14.1
-gunicorn==23.0.0
 uvicorn==0.34.0
-fastapi==0.115.11
+fastapi==0.115.6
 google-auth==2.37.0
 requests==2.32.3
 google-cloud-logging==3.11.3

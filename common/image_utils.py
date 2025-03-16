@@ -1,5 +1,5 @@
 import io
-
+from absl import logging
 from PIL import Image as PIL_Image
 from vertexai.preview.vision_models import Image
 
@@ -96,5 +96,11 @@ def overlay_mask(
     mask_pil = PIL_Image.open(io.BytesIO(mask_bytes)).convert(
         "RGBA",
     )
+    if image_pil.size != mask_pil.size:
+        logging.info("Resizing mask to image size.")
+        mask_pil = mask_pil.resize(image_pil.size)
+    if image_pil.mode != mask_pil.mode:
+        logging.info("Converting mask to image mode.")
+        mask_pil = mask_pil.convert(image_pil.mode)
     blended_pil = PIL_Image.blend(image_pil, mask_pil, alpha=alpha)
     return Image(get_bytes_from_pil(blended_pil))

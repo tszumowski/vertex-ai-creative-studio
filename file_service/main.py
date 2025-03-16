@@ -26,8 +26,8 @@ def download(request: DownloadFileRequest) -> DownloadFileResponse:
     try:
         kwargs = request.dict()
         worker = DownloadWorker(settings=None)
-        file_string = worker.execute(**kwargs)
-        return {"file_string": file_string}
+        content, mimetype, filename = worker.execute(**kwargs)
+        return {"content": content, "mimetype": mimetype, "filename": filename}
     except storage_client_lib.StorageClientError as err:
         logging.error(
             "FileServiceWorker: An error occured trying to download file %s",
@@ -67,6 +67,24 @@ def search(request: SearchFileRequest) -> SearchFileResponse:
     except storage_client_lib.StorageClientError as err:
         logging.error(
             "SearchWorker: An error occured searching for file %s",
+            err,
+        )
+        raise fastapi.HTTPException(
+            status_code=500,
+            detail=("The server could not process the request: %s", str(err)),
+        ) from err
+
+
+@app.post("/list")
+def list_all(request: SearchFileRequest) -> SearchFileResponse:
+    del request
+    try:
+        worker = SearchWorker(settings=None)
+        results = worker.list_all()
+        return {"results": results}
+    except storage_client_lib.StorageClientError as err:
+        logging.error(
+            "SearchWorker: An error occured listing files %s",
             err,
         )
         raise fastapi.HTTPException(

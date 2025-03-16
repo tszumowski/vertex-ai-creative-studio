@@ -6,7 +6,7 @@ resource "google_cloud_run_v2_service" "app" {
 
   template {
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 10
     }
     service_account = google_service_account.app_sa.email
@@ -43,7 +43,7 @@ resource "google_cloud_run_v2_service" "api_gateway" {
 
   template {
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 10
     }
     service_account = google_service_account.api_gateway_sa.email
@@ -83,7 +83,7 @@ resource "google_cloud_run_v2_service" "file_service" {
 
   template {
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 10
     }
     service_account = google_service_account.file_service_sa.email
@@ -127,7 +127,7 @@ resource "google_cloud_run_v2_service" "generation_service" {
 
   template {
     scaling {
-      min_instance_count = 0
+      min_instance_count = 1
       max_instance_count = 10
     }
     service_account = google_service_account.generation_service_sa.email
