@@ -8,12 +8,13 @@ from pydantic import BaseModel
 class ImageGenerationRequest(BaseModel):
     model: str
     prompt: str
-    num_images: int | None = 1
-    negative_prompt: str | None = None
-    aspect_ratio: str | None = "1:1"
-    add_watermark: bool | None = True
+    num_images: int
+    negative_prompt: str
+    aspect_ratio: str
+    add_watermark: bool
     language: str | None = "auto"
     reference_images: list[dict[str, str]] | None = None
+    username: str | None = None
 
 
 class ImageGenerationResponse(BaseModel):
@@ -30,11 +31,13 @@ class TextGenerationResponse(BaseModel):
 
 
 class EditImageRequest(BaseModel):
+    model: str
     image_uri: str
     prompt: str
     number_of_images: int = 1
-    edit_mode: str = ""
-    mask_uri: str = ""
+    edit_mode: str
+    mask_uri: str | None = None
+    username: str | None = None
 
 
 class EditImageResponse(BaseModel):
@@ -44,7 +47,8 @@ class EditImageResponse(BaseModel):
 class VideoGenerationRequest(BaseModel):
     prompt: str
     image_uri: str
-    aspect_ratio: str = "16:9"
+    aspect_ratio: str
+    username: str | None = None
 
 
 class VideoGenerationResponse(BaseModel):
@@ -57,6 +61,7 @@ class ImageUpscalingRequest(BaseModel):
     upscale_factor: str | None = None
     output_mime_type: str | None = "image/png"
     output_compression_quality: int | None = None
+    username: str | None = None
 
 
 class ImageUpscalingResponse(BaseModel):
@@ -65,8 +70,8 @@ class ImageUpscalingResponse(BaseModel):
 
 class ImageSegmentationRequest(BaseModel):
     image_uri: str
-    mode: str = "foreground"
-    prompt: str | None = None
+    mode: str
+    prompt: str
     target_size: tuple[int, int] | None = None
     horizontal_alignment: str | None = None
     vertical_alignment: str | None = None

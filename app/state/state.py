@@ -16,4 +16,5 @@ class AppState:
     critic_prompt: str = ""
     critic_prompt_placeholder: str = constants.CRITIC_PROMPT.strip()
 
-    user: str = ""
+    user_email: str = ""
+    user_agent: str = ""

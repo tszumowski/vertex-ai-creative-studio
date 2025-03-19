@@ -26,6 +26,7 @@ from worker import (
     VideoGenerationServiceWorker,
 )
 
+from common import settings as settings_lib
 from common.clients import aiplatform_client_lib, vertexai_client_lib
 
 logging_client = google.cloud.logging.Client()
@@ -38,7 +39,9 @@ app = fastapi.FastAPI()
 def generate_images(request: ImageGenerationRequest) -> ImageGenerationResponse:
     try:
         kwargs = request.dict()
-        worker = ImageGenerationServiceWorker(settings=None)
+        username = kwargs.pop("username")
+        settings = settings_lib.Settings(username=username)
+        worker = ImageGenerationServiceWorker(settings=settings)
         image_uris = worker.execute(**kwargs)
         return {"image_uris": image_uris}
     except vertexai_client_lib.VertexAIClientError as err:
@@ -56,7 +59,8 @@ def generate_images(request: ImageGenerationRequest) -> ImageGenerationResponse:
 def generate_text(request: TextGenerationRequest) -> TextGenerationResponse:
     try:
         kwargs = request.dict()
-        worker = TextGenerationServiceWorker(settings=None)
+        settings = settings_lib.Settings()
+        worker = TextGenerationServiceWorker(settings=settings)
         prompt = worker.execute(**kwargs)
         return {"text": prompt}
     except vertexai_client_lib.VertexAIClientError as err:
@@ -74,7 +78,9 @@ def generate_text(request: TextGenerationRequest) -> TextGenerationResponse:
 def edit_image(request: EditImageRequest) -> EditImageResponse:
     try:
         kwargs = request.dict()
-        worker = ImageEditingServiceWorker(settings=None)
+        username = kwargs.pop("username")
+        settings = settings_lib.Settings(username=username)
+        worker = ImageEditingServiceWorker(settings=settings)
         edited_image_uri = worker.execute(**kwargs)
         return {"edited_image_uri": edited_image_uri}
     except vertexai_client_lib.VertexAIClientError as err:
@@ -92,7 +98,9 @@ def edit_image(request: EditImageRequest) -> EditImageResponse:
 def upscale_image(request: ImageUpscalingRequest) -> ImageUpscalingResponse:
     try:
         kwargs = request.dict()
-        worker = ImageUpscalingServiceWorker(settings=None)
+        username = kwargs.pop("username")
+        settings = settings_lib.Settings(username=username)
+        worker = ImageUpscalingServiceWorker(settings=settings)
         upscaled_image_uri = worker.execute(**kwargs)
         return {"upscaled_image_uri": upscaled_image_uri}
     except vertexai_client_lib.VertexAIClientError as err:
@@ -110,7 +118,9 @@ def upscale_image(request: ImageUpscalingRequest) -> ImageUpscalingResponse:
 def generate_video(request: VideoGenerationRequest) -> VideoGenerationResponse:
     try:
         kwargs = request.dict()
-        worker = VideoGenerationServiceWorker(settings=None)
+        username = kwargs.pop("username")
+        settings = settings_lib.Settings(username=username)
+        worker = VideoGenerationServiceWorker(settings=settings)
         video_uri = worker.execute(**kwargs)
         return {"video_uri": video_uri}
     except aiplatform_client_lib.AIPlatformClientError as err:
@@ -128,7 +138,8 @@ def generate_video(request: VideoGenerationRequest) -> VideoGenerationResponse:
 def segment_image(request: ImageSegmentationRequest) -> ImageSegmentationResponse:
     try:
         kwargs = request.dict()
-        worker = ImageSegmentationServiceWorker(settings=None)
+        settings = settings_lib.Settings()
+        worker = ImageSegmentationServiceWorker(settings=settings)
         mask = worker.execute(**kwargs)
         return {"mask": mask}
     except vertexai_client_lib.VertexAIClientError as err:

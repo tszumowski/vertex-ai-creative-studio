@@ -8,7 +8,7 @@ from components.styles import (
 from state.state import AppState
 
 page_json = [
-    {"id": 0, "display": "Generate", "icon": "stadium", "route": "/"},
+    {"id": 0, "display": "Generate", "icon": "stadium", "route": "/generate"},
     {"id": 1, "display": "Edit", "icon": "leaderboard", "route": "/edit"},
     {"id": 2, "display": "History", "icon": "history", "route": "/history"},
     {
@@ -31,14 +31,11 @@ def navigate_to(e: me.ClickEvent):
     """navigate to a specific page"""
     s = me.state(AppState)
     idx = int(e.key)
-    print(f"idx: {idx}")
 
     page = get_page_by_id(idx)
     if page is None:
-        print(f"requested {idx}, but couldn't find page with that id.")
         return
 
-    print(f"navigating to: {page}")
     s.current_page = page["route"]
     me.navigate(s.current_page)
     yield
@@ -186,7 +183,6 @@ def toggle_theme(e: me.ClickEvent):  # pylint: disable=unused-argument
 
 def theme_toggle_icon(key: int, icon: str, text: str, min: bool = True):
     """Theme toggle icon"""
-    # THEME_TOGGLE_STYLE = me.Style(position="absolute", bottom=50, align_content="left")
     if min:  # minimized
         with me.box(
             style=me.Style(
@@ -199,7 +195,6 @@ def theme_toggle_icon(key: int, icon: str, text: str, min: bool = True):
             with me.content_button(
                 key=str(key),
                 on_click=toggle_theme,
-                # style=THEME_TOGGLE_STYLE,
                 type="icon",
             ):
                 with me.tooltip(message=text):
@@ -211,7 +206,6 @@ def theme_toggle_icon(key: int, icon: str, text: str, min: bool = True):
         with me.content_button(
             key=str(key),
             on_click=toggle_theme,
-            # style=THEME_TOGGLE_STYLE,
         ):
             with me.box(
                 style=me.Style(

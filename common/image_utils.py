@@ -1,4 +1,5 @@
 import io
+
 from absl import logging
 from PIL import Image as PIL_Image
 from vertexai.preview.vision_models import Image
@@ -104,3 +105,31 @@ def overlay_mask(
         mask_pil = mask_pil.convert(image_pil.mode)
     blended_pil = PIL_Image.blend(image_pil, mask_pil, alpha=alpha)
     return Image(get_bytes_from_pil(blended_pil))
+
+
+def get_aspect_ratio_string(image: Image) -> str:
+    """Calculates the aspect ratio of a Vertex AI Image object.
+
+    Args:
+        image: The Vertex AI Image object.
+
+    Returns:
+        The aspect ratio as a string, or None if the image has no dimensions.
+    """
+    try:
+        width, height = image._pil_image.size
+
+        def _find_common_denominator(width: int, height: int) -> int:
+            """Helper function to find the greatest common divisor."""
+            while height:
+                width, height = height, width % height
+            return width
+
+        common_divisor = _find_common_denominator(width, height)
+        simplified_width = width // common_divisor
+        simplified_height = height // common_divisor
+
+        return f"{simplified_width}:{simplified_height}"
+
+    except Exception as ex:
+        logging.error("Error extracting aspect ratio from image: %s", ex)

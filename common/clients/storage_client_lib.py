@@ -1,6 +1,7 @@
 """Module to interact with Google Cloud Storage."""
 
 import base64
+import mimetypes
 import os
 from urllib.parse import urlparse
 
@@ -9,7 +10,6 @@ from absl import logging
 from google.auth import compute_engine
 from google.auth.transport import requests
 from google.cloud import exceptions, storage
-import mimetypes
 
 _DEFAULT_URL_EXPIRATION_SECONDS = 3600
 

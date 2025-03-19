@@ -12,7 +12,7 @@ from config import config_lib
 from icons.svg_icon_component import svg_icon_component
 from pages import constants
 from state.state import AppState
-from utils import auth_request
+from utils import auth_request, helpers
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -55,6 +55,7 @@ class GenerateImagesPageState:
 
     rewriter_prompt: str = ""
     critic_prompt: str = ""
+    username: str = ""
 
     negative_prompt_input: str = ""
     negative_prompt_placeholder: str = ""
@@ -78,8 +79,10 @@ class GenerateImagesPageState:
 def content(app_state: AppState) -> None:
     """Generate Images Page"""
     page_state = me.state(GenerateImagesPageState)
+    app_state = me.state(AppState)
     page_state.rewriter_prompt = app_state.rewriter_prompt
     page_state.critic_prompt = app_state.critic_prompt
+    page_state.username = helpers.extract_username(app_state.user_email)
 
     with me.box(
         style=me.Style(
@@ -583,7 +586,9 @@ async def on_click_rewrite_prompt(
             service_url=config.api_gateway_url,
         )
         try:
-            rewritten_prompt = await response.json()
+            data = await response.json()
+            logging.info("Got response: %s", data)
+            rewritten_prompt = data.get("text")
             state.prompt_input = rewritten_prompt
             state.prompt_placeholder = rewritten_prompt
         except Exception as e:
@@ -603,6 +608,7 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
         "aspect_ratio": state.aspect_ratio,
         "add_watermark": state.add_watermark,
         "reference_images": reference_images,
+        "username": state.username,
     }
     logging.info("Making request with payload %s", payload)
     response = await auth_request.make_authenticated_request(
@@ -612,9 +618,9 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
         service_url=config.api_gateway_url,
     )
     try:
-        image_uris = await response.json()
-        logging.info(image_uris)
-        return image_uris
+        data = await response.json()
+        logging.info("Got response: %s", data)
+        return data.get("image_uris")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
 
@@ -636,9 +642,9 @@ async def send_image_critic_request(state: GenerateImagesPageState) -> str:
         service_url=config.api_gateway_url,
     )
     try:
-        text = await response.json()
-        logging.info(text)
-        return text
+        data = await response.json()
+        logging.info("Got response: %", data)
+        return data.get("text")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
 
@@ -682,7 +688,9 @@ async def on_upload(event: me.UploadEvent) -> None:
             json_data=payload,
             service_url=config.api_gateway_url,
         )
-        upload_uri = await response.json()
+        data = await response.json()
+        logging.info("Got response: %s", data)
+        upload_uri = data.get("file_uri")
         logging.info(
             "Contents len %s of type %s uploaded to %s as %s.",
             len(contents),

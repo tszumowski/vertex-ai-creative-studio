@@ -13,6 +13,7 @@ from models import (
 )
 from worker import DownloadWorker, SearchWorker, UploadWorker
 
+from common import settings as settings_lib
 from common.clients import storage_client_lib
 
 logging_client = google.cloud.logging.Client()
@@ -25,7 +26,8 @@ app = fastapi.FastAPI()
 def download(request: DownloadFileRequest) -> DownloadFileResponse:
     try:
         kwargs = request.dict()
-        worker = DownloadWorker(settings=None)
+        settings = settings_lib.Settings()
+        worker = DownloadWorker(settings=settings)
         content, mimetype, filename = worker.execute(**kwargs)
         return {"content": content, "mimetype": mimetype, "filename": filename}
     except storage_client_lib.StorageClientError as err:
@@ -43,7 +45,8 @@ def download(request: DownloadFileRequest) -> DownloadFileResponse:
 def upload(request: UploadFileRequest) -> UploadFileResponse:
     try:
         kwargs = request.dict()
-        worker = UploadWorker(settings=None)
+        settings = settings_lib.Settings()
+        worker = UploadWorker(settings=settings)
         file_uri = worker.execute(**kwargs)
         return {"file_uri": file_uri}
     except storage_client_lib.StorageClientError as err:
@@ -61,7 +64,8 @@ def upload(request: UploadFileRequest) -> UploadFileResponse:
 def search(request: SearchFileRequest) -> SearchFileResponse:
     try:
         kwargs = request.dict()
-        worker = SearchWorker(settings=None)
+        settings = settings_lib.Settings()
+        worker = SearchWorker(settings=settings)
         results = worker.execute(**kwargs)
         return {"results": results}
     except storage_client_lib.StorageClientError as err:
@@ -79,7 +83,8 @@ def search(request: SearchFileRequest) -> SearchFileResponse:
 def list_all(request: SearchFileRequest) -> SearchFileResponse:
     del request
     try:
-        worker = SearchWorker(settings=None)
+        settings = settings_lib.Settings()
+        worker = SearchWorker(settings=settings)
         results = worker.list_all()
         return {"results": results}
     except storage_client_lib.StorageClientError as err:

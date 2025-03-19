@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import abc
 import os
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cloud_detect
 import tadau as tadau_lib
@@ -12,11 +12,14 @@ from absl import logging
 
 from common.clients import firestore_client_lib
 
+if TYPE_CHECKING:
+    from common import settings as settings_lib
+
 
 class BaseWorker(abc.ABC):
     def __init__(
         self,
-        settings: Any | None = None,  # Needs to be defined.
+        settings: settings_lib.Settings,
     ) -> None:
         """Initializes the Google Ads worker.
 

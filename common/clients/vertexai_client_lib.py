@@ -6,6 +6,7 @@ import dataclasses
 import enum
 import mimetypes
 import os
+import time
 from typing import Literal, cast
 
 import cv2
@@ -27,7 +28,6 @@ from vertexai.preview.vision_models import (
     MaskReferenceImage,
     MultiModalEmbeddingModel,
     RawReferenceImage,
-    ReferenceImage,
     Scribble,
     StyleReferenceImage,
     SubjectReferenceImage,
@@ -35,7 +35,6 @@ from vertexai.preview.vision_models import (
 
 from common import image_utils
 from common.clients import storage_client_lib
-from common.segmentation_utils import SemanticType
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
@@ -325,23 +324,23 @@ class VertexAIClient:
 
     def edit_image(
         self,
+        model: str,
         image_uri: str,
         prompt: str,
         number_of_images: int,
         edit_mode: str,
         mask_uri: str | None = None,
-        model: str | None = IMAGEN_EDIT_MODEL,
     ) -> str:
         """Edits and image.
 
         Args:
+            model: The imagen edit model used.
             image_uri: The URI of the image to edit. E.g. "gs://dir/my_image.jpg"
             prompt: The edit prompt.
             number_of_images: Number of images to create after edits. Defaults to 1.
             edit_mode: The edit mode for editing. Defaults to "".
             mask_mode: The area to edit. Defaults to "foreground".
             mask_uri: The URI of the image mask.
-            model: The imagen edit model used.
 
         Returns:
             The edited image URI.
@@ -352,7 +351,8 @@ class VertexAIClient:
         try:
             edit_model = ImageGenerationModel.from_pretrained(model)
             bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
-            edited_file_name = f"{file_name}-edited{extension}"
+            timestamp_int = int(time.time())
+            edited_file_name = f"{file_name}-edited-{timestamp_int}{extension}"
 
             image = Image(gcs_uri=image_uri)
             mask = Image(gcs_uri=mask_uri) if mask_uri else None
@@ -462,7 +462,8 @@ class VertexAIClient:
                 output_compression_quality=output_compression_quality,
             )
             bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
-            upscaled_file_name = f"{file_name}-upscaled{extension}"
+            timestamp_int = int(time.time())
+            upscaled_file_name = f"{file_name}-upscaled-{timestamp_int}{extension}"
             upscaled_file_uri = self.storage_client.upload(
                 bucket_name=bucket_name,
                 contents=upscaled_image._as_base64_string(),
@@ -528,7 +529,8 @@ class VertexAIClient:
         new_image = Image(image_utils.get_bytes_from_pil(image_pil))
         bucket_name, file_name, _ = get_bucket_and_file_name(image_uri)
         new_image_ext = mimetypes.guess_all_extensions(new_image._mime_type)[0]
-        new_image_file_name = f"{file_name}-outpaint{new_image_ext}"
+        timestamp_int = int(time.time())
+        new_image_file_name = f"{file_name}-outpaint-{timestamp_int}{new_image_ext}"
         new_image_uri = self.storage_client.upload(
             bucket_name=bucket_name,
             contents=new_image._as_base64_string(),
@@ -597,7 +599,8 @@ class VertexAIClient:
         segmented_image_mime_type = segmented_image.masks[0]._mime_type
         bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
         extension = mimetypes.guess_all_extensions(segmented_image_mime_type)[0]
-        mask_file_name = f"{file_name}-mask{extension}"
+        timestamp_int = int(time.time())
+        mask_file_name = f"{file_name}-mask-{timestamp_int}{extension}"
 
         mask_file_uri = self.storage_client.upload(
             bucket_name=bucket_name,

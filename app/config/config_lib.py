@@ -29,3 +29,4 @@ class AppConfig:
             f"https://genmedia-app-{self.project_number}.{self.region}.run.app"
         )
         self.default_image_model = "imagen-3.0-fast-generate-001"
+        self.default_editing_model = "imagen-3.0-capability-001"

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import io
 from dataclasses import field
 from typing import TYPE_CHECKING, Any
 
@@ -10,11 +9,12 @@ from absl import logging
 from components.header import header
 from config import config_lib
 from pages import constants
-from PIL import Image
-from utils import auth_request
+from state.state import AppState
+from utils import auth_request, helpers
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
+
 
 config = config_lib.AppConfig()
 
@@ -71,10 +71,14 @@ class EditImagesPageState:
     horizontal_alignment: str = "center"
     vertical_alignment: str = "center"
 
+    username: str = ""
 
-def content() -> None:
+
+def content(app_state: AppState) -> None:
+    app_state = me.state(AppState)
     page_state = me.state(EditImagesPageState)
-    if me.query_params.get("upload_uri"):
+    page_state.username = helpers.extract_username(app_state.user_email)
+    if me.query_params.get("upload_uri") and not page_state.upload_uri:
         page_state.upload_uri = me.query_params.get("upload_uri")
     logging.info("Page loaded with state: %s", page_state)
     with me.box(
@@ -515,7 +519,8 @@ async def send_image_segmentation_request(state: EditImagesPageState) -> str:
         service_url=config.api_gateway_url,
     )
     try:
-        return await response.json()
+        data = await response.json()
+        return data.get("mask")
     except Exception as e:
         logging.exception("Something went wrong segmenting image: %s", e)
 
@@ -582,7 +587,7 @@ async def on_upload(event: me.UploadEvent) -> None:
     state.upload_file = None
     state.upload_file = event.file
     contents = base64.b64encode(event.file.getvalue()).decode("utf-8")
-    width, length = get_image_dimensions_from_base64(contents)
+    width, length = helpers.get_image_dimensions_from_base64(contents)
     state.initial_edit_target_width, state.initial_edit_target_height = (
         str(width),
         str(length),
@@ -606,7 +611,8 @@ async def on_upload(event: me.UploadEvent) -> None:
             json_data=payload,
             service_url=config.api_gateway_url,
         )
-        state.upload_uri = await response.json()
+        data = await response.json()
+        state.upload_uri = data.get("file_uri")
         logging.info(
             "Contents len %s of type %s uploaded to %s as %s.",
             len(contents),
@@ -677,7 +683,7 @@ def _get_target_image_size(state: EditImagesPageState) -> tuple[int, int]:
 
 
 async def send_image_editing_request(state: EditImagesPageState) -> str:
-    """Event for image editing."""
+    """Sends an image editing request to the respective API Gateway endpoint."""
     image_uri = state.upload_uri
     if state.outpainted_uri and state.edit_mode == "EDIT_MODE_OUTPAINT":
         image_uri = state.outpainted_uri
@@ -687,6 +693,8 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
         "number_of_images": 1,
         "edit_mode": state.edit_mode,
         "mask_uri": state.mask_uri,
+        "model": config.default_editing_model,
+        "username": state.username,
     }
     logging.info("Making request with payload %s", payload)
     response = await auth_request.make_authenticated_request(
@@ -696,9 +704,9 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
         service_url=config.api_gateway_url,
     )
     try:
-        edited_image_uri = await response.json()
-        logging.info(edited_image_uri)
-        return edited_image_uri
+        data = await response.json()
+        logging.info("Got response: %s", data)
+        return data.get("edited_image_uri")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
 
@@ -713,29 +721,3 @@ async def on_click_image_edit(event: me.ClickEvent) -> AsyncGenerator[Any, Any, 
     state.edit_uri = await send_image_editing_request(state)
     state.is_loading = False
     yield
-
-
-def get_image_dimensions_from_base64(base64_string: str) -> tuple[int, int]:
-    """Retrieves the width and height of an image from a base64 encoded string.
-
-    Args:
-        base64_string: The base64 encoded image data.
-
-    Returns:
-        A tuple (width, height) if successful, or None if an error occurs.
-    """
-    try:
-        # Remove the data URL prefix if it exists.
-        if base64_string.startswith("data:image"):
-            parts = base64_string.split(",")
-            if len(parts) > 1:
-                base64_string = parts[1]
-
-        image_data = base64.b64decode(base64_string)
-        image_stream = io.BytesIO(image_data)
-        img = Image.open(image_stream)
-        width, height = img.size
-        return width, height
-    except Exception as e:
-        logging.info(f"App: Error getting image dimensions: {e}")
-        return None

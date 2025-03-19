@@ -6,6 +6,7 @@ from typing import Any
 from google.cloud.firestore_v1.vector import Vector
 from vertexai.preview.vision_models import Image
 
+from common import image_utils
 from common.clients import vertexai_client_lib
 
 
@@ -14,13 +15,19 @@ class GenMedia:
         self,
         media_uri: str,
         worker: str,
+        username: str,
         **kwargs: dict[str, Any],
     ) -> None:
         self.media_uri = media_uri
         self.worker = worker
+        self.username = username
         self.prompt = kwargs.get("prompt")
         self.model = kwargs.get("model")
-        self.aspect_ratio = kwargs.get("aspect_ratio")
+        self.aspect_ratio = (
+            kwargs.get("aspect_ratio")
+            if not None
+            else image_utils.get_aspect_ratio_string(Image(gcs_uri=media_uri))
+        )
         self.image_embeddings = None
         self.prompt_embeddings = None
         self.timestamp = datetime.datetime.now(

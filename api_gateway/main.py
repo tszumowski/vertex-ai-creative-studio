@@ -27,160 +27,121 @@ _GENERATION_SERVICE_URL = (
 _FILE_SERVICE_URL = f"https://genmedia-file-service-{PROJECT_NUMBER}.{REGION}.run.app"
 
 
-@app.post("/generation/generate_images")
-async def generate_images_gateway(request: Request) -> list[str]:
-    """Exposes the image generation endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
+async def process_request(
+    request: Request,
+    service_url: str,
+    endpoint: str,
+    method: str = "POST",
+) -> dict[str, Any]:
+    """Processes a request to the API Gateway."""
+    request_body = await request.json()
+    logging.info("API Gateway: Received request: %s", request_body)
     response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_GENERATION_SERVICE_URL}/generate_images",
-        json_data=data,
-        service_url=_GENERATION_SERVICE_URL,
+        method=method,
+        url=f"{service_url}/{endpoint}",
+        json_data=request_body,
+        service_url=service_url,
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
     data = await response.json()
-    return data.get("image_uris")
+    logging.info("API Gateway: Received response: %s", data)
+    return data
+
+
+@app.post("/generation/generate_images")
+async def generate_images_gateway(request: Request) -> dict[str, Any]:
+    """Exposes the image generation endpoint through the API Gateway."""
+    return await process_request(
+        request=request,
+        service_url=_GENERATION_SERVICE_URL,
+        endpoint="generate_images",
+    )
 
 
 @app.post("/generation/generate_video")
-async def generate_video_gateway(request: Request) -> list[str]:
+async def generate_video_gateway(request: Request) -> dict[str, Any]:
     """Exposes the video generation endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_GENERATION_SERVICE_URL}/generate_video",
-        json_data=data,
+    return await process_request(
+        request=request,
         service_url=_GENERATION_SERVICE_URL,
+        endpoint="generate_video",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("video_uri")
 
 
 @app.post("/generation/generate_text")
-async def generate_text(request: Request) -> str:
+async def generate_text(request: Request) -> dict[str, Any]:
     """Exposes the image generation endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_GENERATION_SERVICE_URL}/generate_text",
-        json_data=data,
+    return await process_request(
+        request=request,
         service_url=_GENERATION_SERVICE_URL,
+        endpoint="generate_text",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("text")
 
 
 @app.post("/editing/edit_image")
-async def edit_image(request: Request) -> str:
+async def edit_image(request: Request) -> dict[str, Any]:
     """Exposes the image editing endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_GENERATION_SERVICE_URL}/edit_image",
-        json_data=data,
+    return await process_request(
+        request=request,
         service_url=_GENERATION_SERVICE_URL,
+        endpoint="edit_image",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("edited_image_uri")
 
 
 @app.post("/editing/segment_image")
-async def segment_image(request: Request) -> dict[str, str]:
+async def segment_image(request: Request) -> dict[str, Any]:
     """Exposes the image editing endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_GENERATION_SERVICE_URL}/segment_image",
-        json_data=data,
+    return await process_request(
+        request=request,
         service_url=_GENERATION_SERVICE_URL,
+        endpoint="segment_image",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("mask")
 
 
 @app.post("/editing/upscale_image")
-async def upscale_image(request: Request) -> str:
+async def upscale_image(request: Request) -> dict[str, Any]:
     """Exposes the image upscaling endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_GENERATION_SERVICE_URL}/upscale_image",
-        json_data=data,
+    return await process_request(
+        request=request,
         service_url=_GENERATION_SERVICE_URL,
+        endpoint="upscale_image",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("upscaled_image_uri")
 
 
 @app.post("/files/download")
-async def download(request: Request) -> dict[str, str]:
-    """Exposes the file download endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_FILE_SERVICE_URL}/download",
-        json_data=data,
+async def download(request: Request) -> dict[str, Any]:
+    """Exposes the files download endpoint through the API Gateway."""
+    return await process_request(
+        request=request,
         service_url=_FILE_SERVICE_URL,
+        endpoint="download",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    return await response.json()
 
 
 @app.post("/files/upload")
-async def upload(request: Request) -> str:
-    """Exposes the file download endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_FILE_SERVICE_URL}/upload",
-        json_data=data,
+async def upload(request: Request) -> dict[str, Any]:
+    """Exposes the files upload endpoint through the API Gateway."""
+    return await process_request(
+        request=request,
         service_url=_FILE_SERVICE_URL,
+        endpoint="upload",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("file_uri")
 
 
 @app.post("/files/search")
-async def search(request: Request) -> list[dict[str, Any]]:
-    """Exposes the file search endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_FILE_SERVICE_URL}/search",
-        json_data=data,
+async def search(request: Request) -> dict[str, Any]:
+    """Exposes the files search endpoint through the API Gateway."""
+    return await process_request(
+        request=request,
         service_url=_FILE_SERVICE_URL,
+        endpoint="search",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("results")
 
 
 @app.post("/files/list")
-async def list_all(request: Request) -> list[dict[str, Any]]:
-    """Exposes the file search endpoint through the API Gateway."""
-    logging.info("API Gateway: Received request: %s", request)
-    data = await request.json()
-    response = await api_utils.make_authenticated_request_with_handled_exception(
-        method="POST",
-        url=f"{_FILE_SERVICE_URL}/list",
-        json_data=data,
+async def list_all(request: Request) -> dict[str, Any]:
+    """Exposes the files list endpoint through the API Gateway."""
+    return await process_request(
+        request=request,
         service_url=_FILE_SERVICE_URL,
+        endpoint="list",
     )
-    logging.info("API Gateway: Received response: %s", await response.json())
-    data = await response.json()
-    return data.get("results")

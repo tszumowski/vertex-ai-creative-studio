@@ -17,7 +17,12 @@ class ImageGenerationServiceWorker(base_worker.BaseWorker):
             image_uris = client.generate_images(**kwargs)
             # Add other tasks e.g. persiting to database here.
             for image_uri in image_uris:
-                genmedia = GenMedia(image_uri, worker=self.name, **kwargs)
+                genmedia = GenMedia(
+                    image_uri,
+                    worker=self.name,
+                    username=self.settings.username,
+                    **kwargs,
+                )
                 self.firestore_client.create(data=genmedia.to_dict())
             event = api_utils.stringify_values(kwargs)
             event["name"] = self.name
@@ -65,7 +70,12 @@ class ImageEditingServiceWorker(base_worker.BaseWorker):
             client = vertexai_client_lib.VertexAIClient()
             edited_image_uri = client.edit_image(**kwargs)
             # Add other tasks e.g. persiting to database here.
-            genmedia = GenMedia(edited_image_uri, worker=self.name, **kwargs)
+            genmedia = GenMedia(
+                edited_image_uri,
+                worker=self.name,
+                sername=self.settings.username,
+                **kwargs,
+            )
             self.firestore_client.create(data=genmedia.to_dict())
             event = api_utils.stringify_values(kwargs)
             event["name"] = self.name
@@ -90,7 +100,12 @@ class ImageUpscalingServiceWorker(base_worker.BaseWorker):
             client = vertexai_client_lib.VertexAIClient()
             upscaled_image_uri = client.upscale_image(**kwargs)
             # Add other tasks e.g. persiting to database here.
-            genmedia = GenMedia(upscaled_image_uri, worker=self.name, **kwargs)
+            genmedia = GenMedia(
+                upscaled_image_uri,
+                worker=self.name,
+                sername=self.settings.username,
+                **kwargs,
+            )
             self.firestore_client.create(data=genmedia.to_dict())
             event = api_utils.stringify_values(kwargs)
             event["name"] = self.name
@@ -115,7 +130,12 @@ class VideoGenerationServiceWorker(base_worker.BaseWorker):
             client = aiplatform_client_lib.AIPlatformClient()
             video_uri = client.generate_video(**kwargs)
             # Add other tasks e.g. persiting to database here.
-            genmedia = GenMedia(video_uri, worker=self.name, **kwargs)
+            genmedia = GenMedia(
+                video_uri,
+                worker=self.name,
+                sername=self.settings.username,
+                **kwargs,
+            )
             self.firestore_client.create(data=genmedia.to_dict())
             event = api_utils.stringify_values(kwargs)
             event["name"] = self.name

@@ -11,7 +11,7 @@ from state import state
 from utils import auth_request
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
 
 config = config_lib.AppConfig()
 
@@ -24,6 +24,7 @@ RESULT_ATTRIBUTES = [
     "width",
     "height",
     "timestamp",
+    "username",
 ]
 
 
@@ -77,11 +78,16 @@ def content(app_state: me.state) -> None:
                         key=f"edit_{page_state.dialog_index}",
                         on_click=on_click_edit,
                     )
-                    with me.content_button():
+                    with me.content_button(type="raised"):
                         me.html(
-                            html=f"""<a href="data:{page_state.download_mimetype};base64,{page_state.download_content}" download="{page_state.download_filename}">Download</a>""",
+                            html=(
+                                f'<a href="data:{page_state.download_mimetype};'
+                                f'base64,{page_state.download_content}" '
+                                f'download="{page_state.download_filename}">Download</a>'
+                            ),
                             style=me.Style(text_decoration="none"),
                         )
+                    me.button("Close", on_click=on_click_close_dialog)
 
     with me.box(
         style=me.Style(
@@ -140,8 +146,8 @@ def content(app_state: me.state) -> None:
                         type="icon",
                         style=me.Style(
                             position="absolute",
-                            top="10px",
-                            right="10px",
+                            top="5px",
+                            right="5px",
                             z_index=1,
                             min_width="0px",
                         ),
@@ -157,18 +163,30 @@ def content(app_state: me.state) -> None:
                         )
 
 
+def clear_dialog_data(state: HistoryPageState) -> None:
+    state.is_open = False
+    state.dialog_data = ""
+    state.dialog_index = 0
+    state.download_content = ""
+    state.download_mimetype = ""
+    state.download_filename = ""
+
+
 def on_click_close_background(e: me.ClickEvent) -> None:
     state = me.state(HistoryPageState)
     if e.is_target:
-        state.is_open = False
+        clear_dialog_data(state)
 
 
-def on_click_edit(event: me.ClickEvent) -> None:
-    page_state = me.state(HistoryPageState)
+def on_click_edit(event: me.ClickEvent) -> Generator[Any, Any, Any]:
+    state = me.state(HistoryPageState)
     img_idx = int(event.key.split("_")[1])
-    result = json.loads(page_state.image_results)[img_idx]
+    result = json.loads(state.image_results)[img_idx]
     media_uri = result.get("media_uri")
+    clear_dialog_data(state)
+    yield
     me.navigate("/edit", query_params={"upload_uri": media_uri})
+    yield
 
 
 def get_logo(state: state.AppState) -> str:
@@ -181,6 +199,12 @@ def on_blur(event: me.InputBlurEvent) -> None:
     state = me.state(HistoryPageState)
     state.input = ""
     state.input = event.value
+
+
+def on_click_close_dialog(event: me.ClickEvent) -> None:
+    del event  # Unused.
+    state = me.state(HistoryPageState)
+    clear_dialog_data(state)
 
 
 async def on_click_dialog_open(e: me.ClickEvent) -> None:
@@ -224,9 +248,9 @@ async def send_image_search_request(state: HistoryPageState) -> list[str]:
         service_url=config.api_gateway_url,
     )
     try:
-        results = await response.json()
-        logging.info(results)
-        return results
+        data = await response.json()
+        logging.info("Got response: %s", data)
+        return data.get("results")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
 

@@ -1,5 +1,4 @@
 version: "3.3"
-
 services:
   generation_service:
     image: 'us-central1-docker.pkg.dev/$PROJECT_ID/genmedia-studio/generation-service:latest'

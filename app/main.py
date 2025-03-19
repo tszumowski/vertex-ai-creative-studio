@@ -4,71 +4,55 @@ import os
 
 import google.cloud.logging
 import mesop as me
-import requests
 from absl import logging
 from components.scaffold import page_scaffold
-from config import config_lib
 from fastapi import FastAPI, Request
 from fastapi.middleware.wsgi import WSGIMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 from pages import edit_images, generate_images, history, settings
+from pydantic import BaseModel
 from state.state import AppState
-from utils import auth_request
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()
 logging.info("Logging client instantiated.")
 
 app = FastAPI()
-config = config_lib.AppConfig()
 
 
-@app.get("/userinfo")
-def userinfo(request: Request) -> str | None:
-    return request.headers.get("X-Goog-Authenticated-User-ID")
+class UserInfo(BaseModel):
+    email: str | None
+    agent: str | None
 
 
-@app.get("/download")
-async def download(gcs_uri: str):
-    payload = {
-        "gcs_uri": gcs_uri,
-    }
-    logging.info("Making request with payload %s", payload)
-    response = await auth_request.make_authenticated_request(
-        method="POST",
-        url=f"{config.api_gateway_url}/files/download",
-        json_data=payload,
-        service_url=config.api_gateway_url,
-    )
-    download_url = await response.json()
-    return FileResponse(path=download_url)
+@app.get("/__/auth/")
+def auth_proxy(request: Request) -> RedirectResponse:
+    user_agent = request.headers.get("user-agent")
+    user_email = request.headers.get("X-Goog-Authenticated-User-Email")
+    app.state.user_info = UserInfo(email=user_email, agent=user_agent)
+    return RedirectResponse(url="/generate")
+
+
+@app.get("/")
+def home() -> RedirectResponse:
+    return RedirectResponse(url="/__/auth/")
 
 
 def on_load(event: me.LoadEvent) -> None:  # pylint: disable=unused-argument
     """On load event"""
     del event
     state = me.state(AppState)
+    state.user_email = app.state.user_info.email if not None else ""
+    state.user_agent = app.state.user_info.agent if not None else ""
     if state.theme_mode:
         me.set_theme_mode(state.theme_mode)
     else:
         me.set_theme_mode("system")
-    try:
-        id_token = auth_request.get_id_token(config.app_url)
-        headers = {"Authorization": f"Bearer {id_token}"}
-        response = requests.get(
-            f"{config.app_url}/userinfo",
-            headers=headers,
-            timeout=10,
-        )
-        user_info = response.text
-        logging.info("User: %s", user_info)
-        state.user = user_info
-    except Exception as ex:
-        logging.exception(ex)
+    logging.info("AppState on Page Load: %s", state)
 
 
 @me.page(
-    path="/",
+    path="/generate",
     title="Home",
     on_load=on_load,
     security_policy=me.SecurityPolicy(
@@ -98,8 +82,9 @@ def generate_images_page() -> None:
 )
 def edit_images_page() -> None:
     """Main Page"""
+    app_state = me.state(AppState)
     with page_scaffold():  # pylint: disable=not-context-manager
-        edit_images.content()
+        edit_images.content(app_state=app_state)
 
 
 @me.page(
