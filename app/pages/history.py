@@ -8,7 +8,7 @@ from absl import logging
 from components.dialog import dialog, dialog_actions
 from config import config_lib
 from state import state
-from utils import auth_request
+from utils import auth_request, helpers
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
@@ -78,16 +78,15 @@ def content(app_state: me.state) -> None:
                         key=f"edit_{page_state.dialog_index}",
                         on_click=on_click_edit,
                     )
-                    with me.content_button(type="raised"):
+                    with me.content_button():
                         me.html(
                             html=(
                                 f'<a href="data:{page_state.download_mimetype};'
                                 f'base64,{page_state.download_content}" '
                                 f'download="{page_state.download_filename}">Download</a>'
                             ),
-                            style=me.Style(text_decoration="none"),
                         )
-                    me.button("Close", on_click=on_click_close_dialog)
+                    me.button("Close", on_click=on_click_close_dialog, type="flat")
 
     with me.box(
         style=me.Style(
@@ -221,13 +220,19 @@ async def on_click_dialog_open(e: me.ClickEvent) -> None:
         "gcs_uri": media_uri,
     }
     logging.info("Making request with payload %s", payload)
-    response = await auth_request.make_authenticated_request(
-        method="POST",
-        url=f"{config.api_gateway_url}/files/download",
-        json_data=payload,
-        service_url=config.api_gateway_url,
-    )
+    if config.local_dev:
+        data = helpers.make_local_request("download")
+        state.download_content = data["content"]
+        state.download_mimetype = data["mimetype"]
+        state.download_filename = data["filename"]
+        return
     try:
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/files/download",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
         data = await response.json()
         state.download_content = data["content"]
         state.download_mimetype = data["mimetype"]
@@ -241,13 +246,15 @@ async def send_image_search_request(state: HistoryPageState) -> list[str]:
         "search_text": state.input,
     }
     logging.info("Making request with payload %s", payload)
-    response = await auth_request.make_authenticated_request(
-        method="POST",
-        url=f"{config.api_gateway_url}/files/search",
-        json_data=payload,
-        service_url=config.api_gateway_url,
-    )
+    if config.local_dev:
+        return helpers.make_local_request("search").get("results")
     try:
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/files/search",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
         data = await response.json()
         logging.info("Got response: %s", data)
         return data.get("results")

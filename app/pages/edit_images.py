@@ -214,10 +214,6 @@ def content(app_state: AppState) -> None:
                                         )
                                         with me.card_actions(align="end"):
                                             me.button(
-                                                label="Download",
-                                                on_click=on_click_download,
-                                            )
-                                            me.button(
                                                 label="Edit",
                                                 on_click=on_click_edit,
                                             )
@@ -452,16 +448,6 @@ def on_click_edit(event: me.ClickEvent) -> None:
     page_state.overlay_file_key += 1
 
 
-def on_click_download(event: me.ClickEvent) -> None:
-    del event  # Unused
-    page_state = me.state(EditImagesPageState)
-    target = page_state.edit_uri.replace(
-        "gs://",
-        "https://storage.mtls.cloud.google.com/",
-    )
-    me.navigate(target)
-
-
 def on_change_alignment(event: me.RadioChangeEvent) -> None:
     state = me.state(EditImagesPageState)
     setattr(state, event.key, event.value)
@@ -501,6 +487,8 @@ async def on_click_image_segmentation(
 
 async def send_image_segmentation_request(state: EditImagesPageState) -> str:
     """Event for image segmentation."""
+    if config.local_dev:
+        return helpers.make_local_request("segment_image").get("mask")
     if not state.upload_uri:
         return None
     payload = {
@@ -603,6 +591,8 @@ async def on_upload(event: me.UploadEvent) -> None:
         "file_name": event.file.name,
         "sub_dir": "uploaded",
     }
+    if config.local_dev:
+        return helpers.make_local_request("upload").get("file_uri")
     try:
         logging.info("Making request with payload %s", payload)
         response = await auth_request.make_authenticated_request(
@@ -697,13 +687,15 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
         "username": state.username,
     }
     logging.info("Making request with payload %s", payload)
-    response = await auth_request.make_authenticated_request(
-        method="POST",
-        url=f"{config.api_gateway_url}/editing/edit_image",
-        json_data=payload,
-        service_url=config.api_gateway_url,
-    )
+    if config.local_dev:
+        return helpers.make_local_request("edit_image").get("edited_image_uri")
     try:
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/editing/edit_image",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
         data = await response.json()
         logging.info("Got response: %s", data)
         return data.get("edited_image_uri")

@@ -2,7 +2,7 @@ import dataclasses
 import os
 
 from pages import constants
-
+from absl import logging
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -17,6 +17,7 @@ class AppConfig:
     """All configuration variables for this application are managed here."""
 
     def __init__(self) -> None:
+        self.local_dev = os.environ.get("LOCAL_DEV", "false").lower() == "true"
         self.project_id = os.environ.get("PROJECT_ID")
         self.project_number = os.environ.get("PROJECT_NUMBER")
         self.region = os.environ.get("REGION", "us-central1")
@@ -30,3 +31,5 @@ class AppConfig:
         )
         self.default_image_model = "imagen-3.0-fast-generate-001"
         self.default_editing_model = "imagen-3.0-capability-001"
+        if self.local_dev:
+            logging.debug("Config: Running in local development mode.")

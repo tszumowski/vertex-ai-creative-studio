@@ -1,12 +1,16 @@
+from __future__ import annotations
+
 import base64
 import io
+import json
 import re
+from typing import Any
 
 from absl import logging
 from PIL import Image
 
 
-def extract_username(email_string: str) -> str:
+def extract_username(email_string: str | None) -> str:
     """Extracts the username from an email-like string.
 
     Args:
@@ -15,11 +19,12 @@ def extract_username(email_string: str) -> str:
     Returns:
         The extracted username, or None if no valid username is found.
     """
-    match = re.search(
-        r":([^@]+)@", email_string
-    )  # Matches anything between ":" and "@"
-    if match:
-        return match.group(1)
+    if email_string:
+        match = re.search(
+            r":([^@]+)@", email_string
+        )  # Matches anything between ":" and "@"
+        if match:
+            return match.group(1)
     return ""
 
 
@@ -47,3 +52,15 @@ def get_image_dimensions_from_base64(base64_string: str) -> tuple[int, int]:
     except Exception as e:
         logging.info(f"App: Error getting image dimensions: {e}")
         return None
+
+
+def make_local_request(endpoint: str) -> dict[str, Any]:
+    filepath = (
+        f"mocks/{endpoint}.json"  # Assuming mock files are in a 'mocks' directory
+    )
+    try:
+        with open(filepath) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logging.info(f"Mock file not found: {filepath}")
+        return None  # Or raise an exception

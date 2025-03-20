@@ -579,13 +579,18 @@ async def on_click_rewrite_prompt(
             ),
         }
         logging.info("Making request with payload %s", payload)
-        response = await auth_request.make_authenticated_request(
-            method="POST",
-            url=f"{config.api_gateway_url}/generation/generate_text",
-            json_data=payload,
-            service_url=config.api_gateway_url,
-        )
+        if config.local_dev:
+            rewritten_prompt = helpers.make_local_request("generate_text").get("text")
+            state.prompt_input = rewritten_prompt
+            state.prompt_placeholder = rewritten_prompt
+            return
         try:
+            response = await auth_request.make_authenticated_request(
+                method="POST",
+                url=f"{config.api_gateway_url}/generation/generate_text",
+                json_data=payload,
+                service_url=config.api_gateway_url,
+            )
             data = await response.json()
             logging.info("Got response: %s", data)
             rewritten_prompt = data.get("text")
@@ -593,6 +598,7 @@ async def on_click_rewrite_prompt(
             state.prompt_placeholder = rewritten_prompt
         except Exception as e:
             logging.exception("Something went wrong generating text: %s", e)
+        rewritten_prompt = state.prompt_input
 
 
 async def send_image_generation_request(state: GenerateImagesPageState) -> list[str]:
@@ -611,13 +617,15 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
         "username": state.username,
     }
     logging.info("Making request with payload %s", payload)
-    response = await auth_request.make_authenticated_request(
-        method="POST",
-        url=f"{config.api_gateway_url}/generation/generate_images",
-        json_data=payload,
-        service_url=config.api_gateway_url,
-    )
+    if config.local_dev:
+        return helpers.make_local_request("generate_images").get("image_uris")
     try:
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/generation/generate_images",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
         data = await response.json()
         logging.info("Got response: %s", data)
         return data.get("image_uris")
@@ -635,13 +643,15 @@ async def send_image_critic_request(state: GenerateImagesPageState) -> str:
         "media_uris": state.image_uris,
     }
     logging.info("Making request with payload %s", payload)
-    response = await auth_request.make_authenticated_request(
-        method="POST",
-        url=f"{config.api_gateway_url}/generation/generate_text",
-        json_data=payload,
-        service_url=config.api_gateway_url,
-    )
+    if config.local_dev:
+        return helpers.make_local_request("generate_text").get("text")
     try:
+        response = await auth_request.make_authenticated_request(
+            method="POST",
+            url=f"{config.api_gateway_url}/generation/generate_text",
+            json_data=payload,
+            service_url=config.api_gateway_url,
+        )
         data = await response.json()
         logging.info("Got response: %", data)
         return data.get("text")
@@ -680,6 +690,11 @@ async def on_upload(event: me.UploadEvent) -> None:
         "file_name": event.file.name,
         "sub_dir": "reference_images",
     }
+    if config.local_dev:
+        state.reference_image_uris[idx] = helpers.make_local_request("upload").get(
+            "file_uri",
+        )
+        return
     try:
         logging.info("Making request with payload %s", payload)
         response = await auth_request.make_authenticated_request(
