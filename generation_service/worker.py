@@ -73,7 +73,7 @@ class ImageEditingServiceWorker(base_worker.BaseWorker):
             genmedia = GenMedia(
                 edited_image_uri,
                 worker=self.name,
-                sername=self.settings.username,
+                username=self.settings.username,
                 **kwargs,
             )
             self.firestore_client.create(data=genmedia.to_dict())
@@ -103,7 +103,7 @@ class ImageUpscalingServiceWorker(base_worker.BaseWorker):
             genmedia = GenMedia(
                 upscaled_image_uri,
                 worker=self.name,
-                sername=self.settings.username,
+                username=self.settings.username,
                 **kwargs,
             )
             self.firestore_client.create(data=genmedia.to_dict())
@@ -133,7 +133,7 @@ class VideoGenerationServiceWorker(base_worker.BaseWorker):
             genmedia = GenMedia(
                 video_uri,
                 worker=self.name,
-                sername=self.settings.username,
+                username=self.settings.username,
                 **kwargs,
             )
             self.firestore_client.create(data=genmedia.to_dict())
