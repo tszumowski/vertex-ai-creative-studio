@@ -13,7 +13,7 @@ from absl import logging
 from common.clients import firestore_client_lib
 
 if TYPE_CHECKING:
-    from common import settings as settings_lib
+    from common.models import settings as settings_lib
 
 
 class BaseWorker(abc.ABC):

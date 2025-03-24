@@ -13,8 +13,8 @@ from models import (
 )
 from worker import DownloadWorker, SearchWorker, UploadWorker
 
-from common import settings as settings_lib
 from common.clients import storage_client_lib
+from common.models import settings as settings_lib
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()

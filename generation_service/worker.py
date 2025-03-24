@@ -57,26 +57,25 @@ class TextGenerationServiceWorker(base_worker.BaseWorker):
                 error_location_id=self.name,
             )
             raise
-        # Add other tasks e.g. persiting to database here.
         return text
 
 
 class ImageEditingServiceWorker(base_worker.BaseWorker):
     """Processes an image editing request."""
 
-    def execute(self, **kwargs: dict[str, Any]) -> str:
+    def execute(self, **kwargs: dict[str, Any]) -> list[str]:
         """Execute the Image editing process."""
         try:
-            client = vertexai_client_lib.VertexAIClient()
-            edited_image_uri = client.edit_image(**kwargs)
-            # Add other tasks e.g. persiting to database here.
-            genmedia = GenMedia(
-                edited_image_uri,
-                worker=self.name,
-                username=self.settings.username,
-                **kwargs,
-            )
-            self.firestore_client.create(data=genmedia.to_dict())
+            client = aiplatform_client_lib.AIPlatformClient()
+            edited_image_uris = client.edit_image(**kwargs)
+            for uri in edited_image_uris:
+                genmedia = GenMedia(
+                    uri,
+                    worker=self.name,
+                    username=self.settings.username,
+                    **kwargs,
+                )
+                self.firestore_client.create(data=genmedia.to_dict())
             event = api_utils.stringify_values(kwargs)
             event["name"] = self.name
             self.tadau_client.send_events([event])
@@ -88,7 +87,7 @@ class ImageEditingServiceWorker(base_worker.BaseWorker):
                 error_location_id=self.name,
             )
             raise
-        return edited_image_uri
+        return edited_image_uris
 
 
 class ImageUpscalingServiceWorker(base_worker.BaseWorker):
@@ -99,7 +98,6 @@ class ImageUpscalingServiceWorker(base_worker.BaseWorker):
         try:
             client = vertexai_client_lib.VertexAIClient()
             upscaled_image_uri = client.upscale_image(**kwargs)
-            # Add other tasks e.g. persiting to database here.
             genmedia = GenMedia(
                 upscaled_image_uri,
                 worker=self.name,
@@ -128,14 +126,14 @@ class VideoGenerationServiceWorker(base_worker.BaseWorker):
         """Execute the Video generation process."""
         try:
             client = aiplatform_client_lib.AIPlatformClient()
-            video_uri = client.generate_video(**kwargs)
-            # Add other tasks e.g. persiting to database here.
-            genmedia = GenMedia(
-                video_uri,
-                worker=self.name,
-                username=self.settings.username,
-                **kwargs,
-            )
+            video_uris = client.generate_video(**kwargs)
+            for uri in video_uris:
+                genmedia = GenMedia(
+                    uri,
+                    worker=self.name,
+                    username=self.settings.username,
+                    **kwargs,
+                )
             self.firestore_client.create(data=genmedia.to_dict())
             event = api_utils.stringify_values(kwargs)
             event["name"] = self.name
@@ -148,7 +146,7 @@ class VideoGenerationServiceWorker(base_worker.BaseWorker):
                 error_location_id=self.name,
             )
             raise
-        return video_uri
+        return video_uris
 
 
 class ImageSegmentationServiceWorker(base_worker.BaseWorker):

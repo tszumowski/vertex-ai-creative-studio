@@ -578,7 +578,6 @@ async def on_click_rewrite_prompt(
                 else state.rewriter_prompt.format(prompt=state.prompt_input)
             ),
         }
-        logging.info("Making request with payload %s", payload)
         if config.local_dev:
             rewritten_prompt = helpers.make_local_request("generate_text").get("text")
             state.prompt_input = rewritten_prompt
@@ -592,7 +591,6 @@ async def on_click_rewrite_prompt(
                 service_url=config.api_gateway_url,
             )
             data = await response.json()
-            logging.info("Got response: %s", data)
             rewritten_prompt = data.get("text")
             state.prompt_input = rewritten_prompt
             state.prompt_placeholder = rewritten_prompt
@@ -616,7 +614,6 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
         "reference_images": reference_images,
         "username": state.username,
     }
-    logging.info("Making request with payload %s", payload)
     if config.local_dev:
         return helpers.make_local_request("generate_images").get("image_uris")
     try:
@@ -627,7 +624,6 @@ async def send_image_generation_request(state: GenerateImagesPageState) -> list[
             service_url=config.api_gateway_url,
         )
         data = await response.json()
-        logging.info("Got response: %s", data)
         return data.get("image_uris")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
@@ -642,7 +638,6 @@ async def send_image_critic_request(state: GenerateImagesPageState) -> str:
         ),
         "media_uris": state.image_uris,
     }
-    logging.info("Making request with payload %s", payload)
     if config.local_dev:
         return helpers.make_local_request("generate_text").get("text")
     try:
@@ -653,7 +648,6 @@ async def send_image_critic_request(state: GenerateImagesPageState) -> str:
             service_url=config.api_gateway_url,
         )
         data = await response.json()
-        logging.info("Got response: %", data)
         return data.get("text")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
@@ -696,7 +690,6 @@ async def on_upload(event: me.UploadEvent) -> None:
         )
         return
     try:
-        logging.info("Making request with payload %s", payload)
         response = await auth_request.make_authenticated_request(
             method="POST",
             url=f"{config.api_gateway_url}/files/upload",
@@ -704,16 +697,7 @@ async def on_upload(event: me.UploadEvent) -> None:
             service_url=config.api_gateway_url,
         )
         data = await response.json()
-        logging.info("Got response: %s", data)
         upload_uri = data.get("file_uri")
-        logging.info(
-            "Contents len %s of type %s uploaded to %s as %s.",
-            len(contents),
-            event.file.mime_type,
-            config.image_creation_bucket,
-            upload_uri,
-        )
         state.reference_image_uris[idx] = upload_uri
-        logging.info("After upload state: %s", state)
     except Exception as e:
         logging.exception("Something went wrong uploading image: %s", e)

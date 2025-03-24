@@ -59,6 +59,7 @@ async def make_authenticated_request_with_handled_exception(
                 url,
                 json=json_data,
                 headers=headers,
+                timeout=30,
             ) as response:
                 await response.read()
                 return response

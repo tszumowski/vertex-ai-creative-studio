@@ -23,10 +23,8 @@ class GenMedia:
         self.username = username
         self.prompt = kwargs.get("prompt")
         self.model = kwargs.get("model")
-        self.aspect_ratio = (
-            kwargs.get("aspect_ratio")
-            if not None
-            else image_utils.get_aspect_ratio_string(Image(gcs_uri=media_uri))
+        self.aspect_ratio = image_utils.get_aspect_ratio_string(
+            Image(gcs_uri=media_uri),
         )
         self.image_embeddings = None
         self.prompt_embeddings = None

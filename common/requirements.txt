@@ -13,3 +13,4 @@ google-cloud-firestore==2.20.0
 opencv-contrib-python-headless==4.11.0.86
 tadau==1.0.8
 cloud-detect==0.0.13
+tenacity==9.0.0

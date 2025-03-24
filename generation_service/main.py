@@ -26,8 +26,8 @@ from worker import (
     VideoGenerationServiceWorker,
 )
 
-from common import settings as settings_lib
 from common.clients import aiplatform_client_lib, vertexai_client_lib
+from common.models import settings as settings_lib
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()
@@ -81,8 +81,8 @@ def edit_image(request: EditImageRequest) -> EditImageResponse:
         username = kwargs.pop("username")
         settings = settings_lib.Settings(username=username)
         worker = ImageEditingServiceWorker(settings=settings)
-        edited_image_uri = worker.execute(**kwargs)
-        return {"edited_image_uri": edited_image_uri}
+        edited_image_uris = worker.execute(**kwargs)
+        return {"edited_image_uris": edited_image_uris}
     except vertexai_client_lib.VertexAIClientError as err:
         logging.error(
             "ImageEditingServiceWorker: An error occured trying to edit image: %s",
@@ -121,8 +121,8 @@ def generate_video(request: VideoGenerationRequest) -> VideoGenerationResponse:
         username = kwargs.pop("username")
         settings = settings_lib.Settings(username=username)
         worker = VideoGenerationServiceWorker(settings=settings)
-        video_uri = worker.execute(**kwargs)
-        return {"video_uri": video_uri}
+        video_uris = worker.execute(**kwargs)
+        return {"video_uris": video_uris}
     except aiplatform_client_lib.AIPlatformClientError as err:
         logging.error(
             "VideoGenerationServiceWorker: An error occured trying to generate video: %s",

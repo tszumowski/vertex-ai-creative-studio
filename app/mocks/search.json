@@ -9,7 +9,7 @@
           "vector_distance":0.7891790761039995,
           "width":1024,
           "model":"imagen-3.0-fast-generate-001",
-          "media_uri":"gs://cse-sds-solution-demos-genmedia/generated/1742420089019/sample_1.png",
+          "media_uri":"gs://cse-sds-solution-demos-genmedia/edited/airforce-outpaint-1742829922-edited-1742829931.png",
           "timestamp":"2025-03-19T21:34:50.622257Z",
           "username":"None"
        },

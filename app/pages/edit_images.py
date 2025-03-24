@@ -152,8 +152,10 @@ def content(app_state: AppState) -> None:
                                             "https://storage.mtls.cloud.google.com/",
                                         ),
                                         style=me.Style(
-                                            height="400px",
+                                            width="460px",
                                             border_radius=12,
+                                            align_self="end",
+                                            justify_content="center",
                                         ),
                                         key=str(page_state.upload_file_key),
                                     )
@@ -164,8 +166,10 @@ def content(app_state: AppState) -> None:
                                             "https://storage.mtls.cloud.google.com/",
                                         ),
                                         style=me.Style(
-                                            height="400px",
+                                            width="460px",
                                             border_radius=12,
+                                            align_self="end",
+                                            justify_content="center",
                                         ),
                                         key=str(page_state.overlay_file_key),
                                     )
@@ -183,7 +187,10 @@ def content(app_state: AppState) -> None:
                                     style=me.Style(font_weight="bold"),
                                 )
                         with me.box(style=_BOX_STYLE):
-                            me.text("Output Image", style=me.Style(font_weight="bold"))
+                            me.text(
+                                "Output Image",
+                                style=me.Style(font_weight="bold", align_self="top"),
+                            )
                             me.box(style=me.Style(height="12px"))
                             if page_state.is_loading:
                                 with me.box(
@@ -198,25 +205,29 @@ def content(app_state: AppState) -> None:
                                     me.progress_spinner()
                             else:
                                 if page_state.edit_uri:
-                                    for idx, uri in enumerate([page_state.edit_uri]):
+                                    for idx, uri in enumerate(
+                                        [page_state.edit_uri],
+                                    ):
                                         me.image(
                                             src=uri.replace(
                                                 "gs://",
                                                 "https://storage.mtls.cloud.google.com/",
                                             ),
                                             style=me.Style(
-                                                height="400px",
-                                                border_radius=12,
+                                                align_self="end",
                                                 justify_content="center",
-                                                display="flex",
+                                                width="460px",
+                                                border_radius=12,
                                             ),
                                             key=f"edit_{idx}",
                                         )
-                                        with me.card_actions(align="end"):
-                                            me.button(
-                                                label="Edit",
-                                                on_click=on_click_edit,
-                                            )
+                                        me.button(
+                                            label="Edit",
+                                            on_click=on_click_edit,
+                                            style=me.Style(
+                                                align_self="end",
+                                            ),
+                                        )
                                 else:
                                     me.box(
                                         style=me.Style(
@@ -499,7 +510,7 @@ async def send_image_segmentation_request(state: EditImagesPageState) -> str:
         "horizontal_alignment": state.horizontal_alignment,
         "vertical_alignment": state.vertical_alignment,
     }
-    logging.info("Making request with payload %s", payload)
+
     response = await auth_request.make_authenticated_request(
         method="POST",
         url=f"{config.api_gateway_url}/editing/segment_image",
@@ -594,7 +605,6 @@ async def on_upload(event: me.UploadEvent) -> None:
     if config.local_dev:
         return helpers.make_local_request("upload").get("file_uri")
     try:
-        logging.info("Making request with payload %s", payload)
         response = await auth_request.make_authenticated_request(
             method="POST",
             url=f"{config.api_gateway_url}/files/upload",
@@ -603,13 +613,6 @@ async def on_upload(event: me.UploadEvent) -> None:
         )
         data = await response.json()
         state.upload_uri = data.get("file_uri")
-        logging.info(
-            "Contents len %s of type %s uploaded to %s as %s.",
-            len(contents),
-            event.file.mime_type,
-            config.image_creation_bucket,
-            state.upload_uri,
-        )
     except Exception as e:
         logging.exception("Something went wrong uploading image: %s", e)
 
@@ -672,7 +675,7 @@ def _get_target_image_size(state: EditImagesPageState) -> tuple[int, int]:
     return None
 
 
-async def send_image_editing_request(state: EditImagesPageState) -> str:
+async def send_image_editing_request(state: EditImagesPageState) -> list[str]:
     """Sends an image editing request to the respective API Gateway endpoint."""
     image_uri = state.upload_uri
     if state.outpainted_uri and state.edit_mode == "EDIT_MODE_OUTPAINT":
@@ -686,9 +689,8 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
         "model": config.default_editing_model,
         "username": state.username,
     }
-    logging.info("Making request with payload %s", payload)
     if config.local_dev:
-        return helpers.make_local_request("edit_image").get("edited_image_uri")
+        return helpers.make_local_request("edit_image").get("edited_image_uris")
     try:
         response = await auth_request.make_authenticated_request(
             method="POST",
@@ -697,8 +699,7 @@ async def send_image_editing_request(state: EditImagesPageState) -> str:
             service_url=config.api_gateway_url,
         )
         data = await response.json()
-        logging.info("Got response: %s", data)
-        return data.get("edited_image_uri")
+        return data.get("edited_image_uris")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)
 
@@ -710,6 +711,7 @@ async def on_click_image_edit(event: me.ClickEvent) -> AsyncGenerator[Any, Any, 
     state.is_loading = True
     state.edit_uri = ""
     yield
-    state.edit_uri = await send_image_editing_request(state)
+    edit_uris = await send_image_editing_request(state)
+    state.edit_uri = edit_uris[0]
     state.is_loading = False
     yield

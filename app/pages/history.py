@@ -219,7 +219,6 @@ async def on_click_dialog_open(e: me.ClickEvent) -> None:
     payload = {
         "gcs_uri": media_uri,
     }
-    logging.info("Making request with payload %s", payload)
     if config.local_dev:
         data = helpers.make_local_request("download")
         state.download_content = data["content"]
@@ -245,7 +244,6 @@ async def send_image_search_request(state: HistoryPageState) -> list[str]:
     payload = {
         "search_text": state.input,
     }
-    logging.info("Making request with payload %s", payload)
     if config.local_dev:
         return helpers.make_local_request("search").get("results")
     try:
@@ -256,7 +254,6 @@ async def send_image_search_request(state: HistoryPageState) -> list[str]:
             service_url=config.api_gateway_url,
         )
         data = await response.json()
-        logging.info("Got response: %s", data)
         return data.get("results")
     except Exception as e:
         logging.exception("Something went wrong generating images: %s", e)

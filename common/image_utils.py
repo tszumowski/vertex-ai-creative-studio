@@ -3,6 +3,7 @@ import io
 from absl import logging
 from PIL import Image as PIL_Image
 from vertexai.preview.vision_models import Image
+import base64
 
 
 def pad_to_target_size(
@@ -133,3 +134,20 @@ def get_aspect_ratio_string(image: Image) -> str:
 
     except Exception as ex:
         logging.error("Error extracting aspect ratio from image: %s", ex)
+
+
+def base64_bytes_to_string(base64_bytes: bytes) -> str:
+    """Decodes base64-encoded bytes to a UTF-8 string.
+
+    Args:
+      base64_bytes: The base64-encoded bytes.
+
+    Returns:
+      The decoded UTF-8 string, or None if an error occurs.
+    """
+    try:
+        decoded_bytes = base64.b64decode(base64_bytes)
+        decoded_string = decoded_bytes.decode("utf-8")
+        return decoded_string
+    except (ValueError, UnicodeDecodeError):
+        return None

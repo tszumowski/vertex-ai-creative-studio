@@ -41,7 +41,7 @@ class EditImageRequest(BaseModel):
 
 
 class EditImageResponse(BaseModel):
-    edited_image_uri: str
+    edited_image_uris: list[str]
 
 
 class VideoGenerationRequest(BaseModel):
@@ -52,7 +52,7 @@ class VideoGenerationRequest(BaseModel):
 
 
 class VideoGenerationResponse(BaseModel):
-    video_uri: str
+    video_uris: list[str]
 
 
 class ImageUpscalingRequest(BaseModel):
