@@ -45,14 +45,6 @@ for API in "${REQUIRED_APIS[@]}"; do
   gcloud services enable "$API"
 done
 
-# Check for existing OAuth Consent Screen.
-iap_brand_id=$(gcloud iap oauth-brands list --format="value(name)" | sed "s:.*/::")
-
-if [[ -z "$iap_brand_id" ]]; then
-  echo "Error: No IAP OAuth brand found. Please configure the OAuth consent screen and ensure it is set to INTERNAL."
-  exit 1
-fi
-
 # Select target region for installation.
 regions=($(gcloud compute regions list --format="value(name)"))
 PS3="Select a region: "
@@ -68,6 +60,23 @@ done
 
 echo "Setting Region: ${GOOGLE_CLOUD_REGION}"
 gcloud config set compute/region ${GOOGLE_CLOUD_REGION}
+
+# Use IAP or not
+echo "Do you want to use Identify Aware Proxy to secure the frontend application? (yes/no)"
+read -r use_iap
+
+if [[ "$use_iap" == "y" || "$use_iap" == "yes" ]]; then
+  echo "Using IAP for authentication."
+  # Check for existing OAuth Consent Screen.
+  iap_brand_id=$(gcloud iap oauth-brands list --format="value(name)" | sed "s:.*/::")
+
+  if [[ -z "$iap_brand_id" ]]; then
+    echo "Error: No IAP OAuth brand found. Please configure the OAuth consent screen and ensure it is set to INTERNAL."
+    exit 1
+  fi
+else
+  echo "Not using IAP."
+  rm ./terraform/certificates.tf ./terraform/iap.tf ./terraform/network.tf ./terraform/output.tf
 
 # Get consent for tracking usage.
 opt_out="N"
