@@ -41,3 +41,7 @@ variable "db_name" {
 variable "iap_brand_id" {
   description = "Existing IAP Brand ID - only INTERNAL TYPE (you can obtain it using this command: `$ gcloud iap oauth-brands list --format='value(name)' | sed 's:.*/::'`)."
 }
+
+variable "terraform_sa" {
+    type  = string
+}

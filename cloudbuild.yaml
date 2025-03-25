@@ -36,6 +36,7 @@ steps:
       media_bucket = "$PROJECT_ID-genmedia"
       db_name = "genmedia-studio"
       iap_brand_id = "$iap_brand_id"
+      terraform_sa = "$_TF_SA_EMAIL"
       EOF
 - id: 'tf init'
   name: 'hashicorp/terraform:1.10.0'
@@ -44,7 +45,6 @@ steps:
   args:
   - '-c'
   - |
-      export GOOGLE_IMPERSONATE_SERVICE_ACCOUNT=$TF_SA_EMAIL
       terraform init \
       -backend-config="bucket=$_TF_STATE_BUCKET" \
       -backend-config="prefix=genmedia-studio" \
