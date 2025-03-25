@@ -145,22 +145,7 @@ resource "google_storage_bucket_iam_binding" "genmedia_storage_admin" {
     ]
 }
 
-# IAP Policy.
-data "google_iam_policy" "iap_users" {
-  binding {
-    role = "roles/iap.httpsResourceAccessor"
-    members = [
-        "serviceAccount:${google_service_account.app_sa.email}",
-        "allAuthenticatedUsers",
-      ]
-  }
-}
 
-resource "google_iap_web_backend_service_iam_policy" "app" {
-  project             = google_compute_backend_service.frontend_backend.project
-  web_backend_service = google_compute_backend_service.frontend_backend.name
-  policy_data         = data.google_iam_policy.iap_users.policy_data
-}
 
 # IAM policy for the Cloud Run services
 resource "google_cloud_run_v2_service_iam_binding" "genmedia_app_run_invoker" {

@@ -28,3 +28,21 @@ resource "google_project_service_identity" "iap_sa" {
   project  = google_project_service.iap_service.project
   service  = "iap.googleapis.com"
 }
+
+
+# IAP Policy.
+data "google_iam_policy" "iap_users" {
+  binding {
+    role = "roles/iap.httpsResourceAccessor"
+    members = [
+        "serviceAccount:${google_service_account.app_sa.email}",
+        "allAuthenticatedUsers",
+      ]
+  }
+}
+
+resource "google_iap_web_backend_service_iam_policy" "app" {
+  project             = google_compute_backend_service.frontend_backend.project
+  web_backend_service = google_compute_backend_service.frontend_backend.name
+  policy_data         = data.google_iam_policy.iap_users.policy_data
+}
