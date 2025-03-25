@@ -140,5 +140,16 @@ else
     --description="Docker repository for GenMedia Studio." || exit 1
 fi
 
+TF_SA_NAME="terraform-sa"
+TF_SA_EMAIL="${TF_SA_NAME}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com"
+# Create the tf service account
+gcloud iam service-accounts create $TF_SA_NAME \
+    --display-name="Terraform Service Account" \
+    --project="$PROJECT_ID"
+
+gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
+    --member="serviceAccount:${TF_SA_NAME}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" \
+    --role="roles/owner"
+
 # Build, push and deploy images.
-gcloud builds submit --config cloudbuild.yaml --substitutions=_TF_STATE_BUCKET=$terraform_state_bucket_name .
+gcloud builds submit --config cloudbuild.yaml --substitutions=_TF_STATE_BUCKET=$terraform_state_bucket_name,_TF_SA=$TF_SA_EMAIL .

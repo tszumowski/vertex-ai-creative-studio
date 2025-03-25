@@ -44,6 +44,7 @@ steps:
   args:
   - '-c'
   - |
+      export GOOGLE_IMPERSONATE_SERVICE_ACCOUNT=$TF_SA_EMAIL
       terraform init \
       -backend-config="bucket=$_TF_STATE_BUCKET" \
       -backend-config="prefix=genmedia-studio" \
