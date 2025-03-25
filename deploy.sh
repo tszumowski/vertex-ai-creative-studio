@@ -76,7 +76,9 @@ if [[ "$use_iap" == "y" || "$use_iap" == "yes" ]]; then
   fi
 else
   echo "Not using IAP."
+  chmod -R 775 ./terraform
   rm ./terraform/certificates.tf ./terraform/iap.tf ./terraform/network.tf ./terraform/output.tf
+fi
 
 # Get consent for tracking usage.
 opt_out="N"
