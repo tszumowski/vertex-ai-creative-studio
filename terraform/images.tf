@@ -20,7 +20,7 @@ resource "google_artifact_registry_repository" "genmedia_studio" {
 
 import {
   to = google_artifact_registry_repository.genmedia_studio
-  id = "projects/$PROJECT_ID/locations/us-central1/repositories/genmedia-studio"
+  id = "projects/${var.project_id}/locations/${var.region}/repositories/genmedia-studio"
 }
 
 data "google_artifact_registry_docker_image" "app" {
