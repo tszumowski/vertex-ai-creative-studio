@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Module to interact with Google Cloud Storage."""
 
 import base64
@@ -22,6 +36,7 @@ class StorageClient:
     """Class to interact with the Google Cloud Storage."""
 
     def __init__(self) -> None:
+        """Instantiates the StorageClient."""
         credentials, project = google.auth.default()
         self._client = storage.Client(project=project, credentials=credentials)
         auth_request = requests.Request()
@@ -146,3 +161,11 @@ class StorageClient:
                 "Could not generated signed url. Error: %s",
                 ce,
             ) from ce
+
+    def get_storage_object_metadata(self, file_uri: str) -> tuple[str, str, str]:
+        """Gets the bucket name, file name and extension from a file URI."""
+        image_uri_parts = file_uri.split("/")
+        bucket_name = image_uri_parts[2]
+        base_name = os.path.basename(file_uri)
+        file_name, extension = os.path.splitext(base_name)
+        return bucket_name, file_name, extension

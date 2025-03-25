@@ -1,3 +1,19 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Helper method to make authenticated requests."""
+
 from __future__ import annotations
 
 import json
@@ -47,7 +63,20 @@ async def make_authenticated_request_with_handled_exception(
     json_data: dict[str, Any] | None = None,
     service_url: str | None = None,
 ) -> aiohttp.ClientResponse:
-    """Makes an authenticated request to the specified URL with exception handling."""
+    """Makes an authenticated request to the specified URL with exception handling.
+
+    Args:
+        method: The HTTP method to use for the request.
+        url: The URL to make the request to.
+        json_data: The JSON data to send in the request (optional).
+        service_url: The URL of the service to use for authentication (optional).
+
+    Returns:
+        The response from the server.
+
+    Raises:
+        HTTPException: If an error occurs during the request.
+    """
     try:
         headers = None
         if service_url:
@@ -68,6 +97,7 @@ async def make_authenticated_request_with_handled_exception(
 
 
 def stringify_values(data: dict[str, Any]) -> dict[str, str]:
+    """Converts all values in the dictionary to strings."""
     new_dict = {}
     for key, value in data.items():
         if isinstance(value, (str, int, float, bool, type(None))):

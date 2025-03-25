@@ -1,3 +1,17 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Entry point for the api gateway."""
 
 from __future__ import annotations
@@ -9,7 +23,7 @@ import google.cloud.logging
 from absl import logging
 from fastapi import FastAPI, Request
 
-from common import api_utils
+from common.utils import api_utils
 
 logging_client = google.cloud.logging.Client()
 logging_client.setup_logging()
@@ -33,7 +47,17 @@ async def process_request(
     endpoint: str,
     method: str = "POST",
 ) -> dict[str, Any]:
-    """Processes a request to the API Gateway."""
+    """Processes a request to the API Gateway.
+
+    Args:
+        request: The request to process.
+        service_url: The URL of the service to call.
+        endpoint: The endpoint to call.
+        method: The HTTP method to use.
+
+    Returns:
+        The response from the service.
+    """
     request_body = await request.json()
     logging.info("API Gateway: Received request: %s", request_body)
     response = await api_utils.make_authenticated_request_with_handled_exception(

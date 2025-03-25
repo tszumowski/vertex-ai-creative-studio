@@ -1,9 +1,25 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Helper methods for image manipulation."""
+
+import base64
 import io
 
 from absl import logging
 from PIL import Image as PIL_Image
 from vertexai.preview.vision_models import Image
-import base64
 
 
 def pad_to_target_size(
@@ -14,7 +30,22 @@ def pad_to_target_size(
     horizontal_offset_ratio: int = 0,
     fill_val: int = 255,
 ) -> PIL_Image:
-    """Pads an image for outpainting."""
+    """Pads an image for outpainting.
+
+    Args:
+        source_image: The image to pad.
+        target_size: The target size of the padded image.
+        mode: The mode of the source image.
+        vertical_offset_ratio: The ratio of the vertical offset.
+        horizontal_offset_ratio: The ratio of the horizontal offset.
+        fill_val: The value to fill the padded image with.
+
+    Returns:
+        The padded image.
+
+    Raises:
+        ValueError: If the source image mode is not RGB or L.
+    """
     orig_image_size_w, orig_image_size_h = source_image.size
     target_size_w, target_size_h = target_size
     x_pos = (target_size_w - orig_image_size_w) // 2
@@ -45,7 +76,17 @@ def pad_image_and_mask(
     vertical_offset_ratio: int = 0,
     horizontal_offset_ratio: int = 0,
 ) -> tuple[PIL_Image, PIL_Image]:
-    """Pads and resizes image and mask to the same target size."""
+    """Pads and resizes image and mask to the same target size.
+
+    Args:
+        ref_image: The reference image.
+        target_size: The target size of the padded image.
+        vertical_offset_ratio: The ratio of the vertical offset.
+        horizontal_offset_ratio: The ratio of the horizontal offset.
+
+    Returns:
+        The padded image and mask.
+    """
     image_vertex = ref_image._pil_image
     mask_vertex = PIL_Image.new("L", ref_image._pil_image.size, 0)
     image_vertex.thumbnail(target_size)
@@ -71,6 +112,7 @@ def pad_image_and_mask(
 
 
 def get_bytes_from_pil(image: PIL_Image) -> bytes:
+    """Converts a PIL Image object to bytes."""
     byte_io_png = io.BytesIO()
     image.save(byte_io_png, "PNG")
     return byte_io_png.getvalue()
@@ -140,14 +182,13 @@ def base64_bytes_to_string(base64_bytes: bytes) -> str:
     """Decodes base64-encoded bytes to a UTF-8 string.
 
     Args:
-      base64_bytes: The base64-encoded bytes.
+        base64_bytes: The base64-encoded bytes.
 
     Returns:
-      The decoded UTF-8 string, or None if an error occurs.
+        The decoded UTF-8 string, or None if an error occurs.
     """
     try:
         decoded_bytes = base64.b64decode(base64_bytes)
-        decoded_string = decoded_bytes.decode("utf-8")
-        return decoded_string
+        return decoded_bytes.decode("utf-8")
     except (ValueError, UnicodeDecodeError):
         return None

@@ -1,9 +1,22 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Module to interact with Imagen via VertexAI."""
 
 from __future__ import annotations
 
 import dataclasses
-import enum
 import mimetypes
 import os
 import time
@@ -33,8 +46,9 @@ from vertexai.preview.vision_models import (
     SubjectReferenceImage,
 )
 
-from common import image_utils
 from common.clients import storage_client_lib
+from common.models.edit_mode import EditMode
+from common.utils import image_utils
 
 IMAGE_SEGMENTATION_MODEL = "image-segmentation-001"
 IMAGEN_EDIT_MODEL = "imagen-3.0-capability-001"
@@ -78,16 +92,6 @@ _SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
 }
-
-
-class EditMode(enum.Enum):
-    EDIT_MODE_INPAINT_INSERTION = "inpainting-insert"
-    EDIT_MODE_OUTPAINT = "outpainting"
-    EDIT_MODE_INPAINT_REMOVAL = "inpainting-remove"
-    EDIT_MODE_PRODUCT_IMAGE = "product-image"
-    EDIT_MODE_BGSWAP = "background-swap"
-    EDIT_MODE_CONTROLLED_EDITING = "controlled-editing"
-
 
 SUBJECT_TYPE_MATCHING = {
     "person": {
@@ -157,17 +161,23 @@ class VertexAIClient:
         Returns:
             The generated text.
         """
-        file_extension = os.path.splitext(media_uri)[1].replace(".", "")
-        file_type = self._get_file_type_from_extension(file_extension)
-        mime_type = mimetypes.guess_type(media_uri)[0]
-        media_content = Part.from_uri(media_uri, mime_type)
-        response = self._text_generation_client.generate_content(
-            contents=[media_content, getattr(Prompt, file_type.upper())],
-            stream=False,
-            generation_config=_GENERATION_CONFIG,
-            safety_settings=_SAFETY_SETTINGS,
-        )
-        generation_response = cast(GenerationResponse, response)
+        try:
+            file_extension = os.path.splitext(media_uri)[1].replace(".", "")
+            file_type = self._get_file_type_from_extension(file_extension)
+            mime_type = mimetypes.guess_type(media_uri)[0]
+            media_content = Part.from_uri(media_uri, mime_type)
+            response = self._text_generation_client.generate_content(
+                contents=[media_content, getattr(Prompt, file_type.upper())],
+                stream=False,
+                generation_config=_GENERATION_CONFIG,
+                safety_settings=_SAFETY_SETTINGS,
+            )
+            generation_response = cast("GenerationResponse", response)
+        except Exception as ex:
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
+            raise VertexAIClientError(
+                f"Could not generate description from image {ex}",
+            ) from ex
         return generation_response.text.strip()
 
     def _get_file_type_from_extension(self, file_extension: str) -> str:
@@ -180,7 +190,7 @@ class VertexAIClient:
             The file type.
 
         Raises:
-            ValueError: If the file extension is not supported.
+            VertexAIClientError: If the file extension is not supported.
         """
         if file_extension in SUPPORTED_IMAGE_TYPES:
             return "image"
@@ -215,7 +225,7 @@ class VertexAIClient:
             A list of GCS uris.
 
         Raises:
-            ImageClientError: When the images could not be generated.
+            VertexAIClientError: When the images could not be generated.
         """
 
         _reference_images = []
@@ -283,8 +293,9 @@ class VertexAIClient:
                 )
                 generated_images_uris.append(image._gcs_uri)
         except Exception as ex:
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
             raise VertexAIClientError(
-                f"VertexAIClient: Could not generate images {ex}",
+                f"Could not generate images {ex}",
             ) from ex
         return generated_images_uris
 
@@ -315,10 +326,11 @@ class VertexAIClient:
                 generation_config=_GENERATION_CONFIG,
                 safety_settings=_SAFETY_SETTINGS,
             )
-            generation_response = cast(GenerationResponse, response)
+            generation_response = cast("GenerationResponse", response)
         except Exception as ex:
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
             raise VertexAIClientError(
-                f"VertexAIClient: Could not generate text {ex}",
+                f"Could not generate text {ex}",
             ) from ex
         return generation_response.text.strip()
 
@@ -329,7 +341,7 @@ class VertexAIClient:
         prompt: str,
         number_of_images: int,
         edit_mode: str,
-        mask_uri: str | None = None,
+        mask_uri: str,
     ) -> str:
         """Edits and image.
 
@@ -337,9 +349,9 @@ class VertexAIClient:
             model: The imagen edit model used.
             image_uri: The URI of the image to edit. E.g. "gs://dir/my_image.jpg"
             prompt: The edit prompt.
-            number_of_images: Number of images to create after edits. Defaults to 1.
-            edit_mode: The edit mode for editing. Defaults to "".
-            mask_mode: The area to edit. Defaults to "foreground".
+            number_of_images: Number of images to create after edits.
+            edit_mode: The edit mode for editing.
+            mask_mode: The area to edit.
             mask_uri: The URI of the image mask.
 
         Returns:
@@ -350,7 +362,9 @@ class VertexAIClient:
         """
         try:
             edit_model = ImageGenerationModel.from_pretrained(model)
-            bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
+            bucket_name, file_name, extension = (
+                self.storage_client.get_storage_object_metadata(image_uri)
+            )
             timestamp_int = int(time.time())
             edited_file_name = f"{file_name}-edited-{timestamp_int}{extension}"
 
@@ -382,12 +396,10 @@ class VertexAIClient:
                 tmp_image_file = f"/tmp/canny{ext}"
                 image.save(tmp_image_file)
                 img = cv2.imread(tmp_image_file)
-                # Setting parameter values
-                t_lower = 100  # Lower Threshold
-                t_upper = 150  # Upper threshold
-                # Applying the Canny Edge filter
+                threshold_lower = 100
+                threshold_upper = 150
                 tmp_edge_file = f"/tmp/canny_edge{ext}"
-                edge = cv2.Canny(img, t_lower, t_upper)
+                edge = cv2.Canny(img, threshold_lower, threshold_upper)
                 cv2.imwrite(tmp_edge_file, edge)
                 control_image = ControlReferenceImage(
                     reference_id=1,
@@ -417,33 +429,35 @@ class VertexAIClient:
                 sub_dir="edited",
             )
         except Exception as ex:
-            logging.exception(ex)
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
             raise VertexAIClientError(
-                f"VertexAIClient: Could not edit image {ex}",
+                f"Could not edit image {ex}",
             ) from ex
         return edited_file_uri
 
     def upscale_image(
         self,
+        model: str,
         image_uri: str,
-        new_size: int | None = 2048,
-        upscale_factor: Literal["x2", "x4"] | None = None,
-        output_mime_type: Literal["image/png", "image/jpeg"] | None = "image/png",
-        output_compression_quality: int | None = None,
+        new_size: int,
+        upscale_factor: Literal["x2", "x4"],
+        output_mime_type: Literal["image/png", "image/jpeg"],
+        output_compression_quality: int,
     ) -> str:
         """Upscales an image.
 
         Args:
+            model: The imagen model used.
             image_uri: The URI of the image to upscale. E.g. "gs://dir/my_image.jpg"
             new_size: The size of the biggest dimension of the upscaled.
             upscale_factor: The upscaling factor. Supported values are "x2" and
-                "x4". Defaults to None.
+                "x4".
             output_mime_type: The mime type of the output image. Supported values
-                are "image/png" and "image/jpeg". Defaults to "image/png".
+                are "image/png" and "image/jpeg".
             output_compression_quality: The compression quality of the output
                 image
                 as an int (0-100). Only applicable if the output mime type is
-                "image/jpeg". Defaults to None.
+                "image/jpeg".
 
         Returns:
             The GCS URI of the upscaled file.
@@ -452,7 +466,7 @@ class VertexAIClient:
             VertexAIClientError: If the image could not be upscaled.
         """
         try:
-            gen_model = ImageGenerationModel.from_pretrained(IMAGEN_GENERATION_MODEL)
+            gen_model = ImageGenerationModel.from_pretrained(model)
             image = Image(gcs_uri=image_uri)
             upscaled_image = gen_model.upscale_image(
                 image=image,
@@ -461,7 +475,9 @@ class VertexAIClient:
                 output_mime_type=output_mime_type,
                 output_compression_quality=output_compression_quality,
             )
-            bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
+            bucket_name, file_name, extension = (
+                self.storage_client.get_storage_object_metadata(image_uri)
+            )
             timestamp_int = int(time.time())
             upscaled_file_name = f"{file_name}-upscaled-{timestamp_int}{extension}"
             upscaled_file_uri = self.storage_client.upload(
@@ -472,9 +488,9 @@ class VertexAIClient:
                 sub_dir="upscaled",
             )
         except Exception as ex:
-            logging.exception(ex)
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
             raise VertexAIClientError(
-                f"VertexAIClient: Could not upscale image {ex}",
+                f"Could not upscale image {ex}",
             ) from ex
         return upscaled_file_uri
 
@@ -483,19 +499,37 @@ class VertexAIClient:
         image_uri: str | None = None,
         text: str | None = None,
     ) -> tuple[float, float]:
-        embedding_model = MultiModalEmbeddingModel.from_pretrained(
-            MULTIMODAL_EMBEDDING_MODEL,
-        )
-        text = text if text else None  # Ensure text is not "".
-        image = None
-        if image_uri:
-            image = Image.load_from_file(image_uri)
+        """Gets the embeddings for an image and/or text.
 
-        embeddings = embedding_model.get_embeddings(
-            image=image,
-            contextual_text=text,
-            dimension=EMBEDDING_DIMENSIONS,
-        )
+        Args:
+            image_uri: The URI of the image to get embeddings for.
+            text: The text to get embeddings for.
+
+        Returns:
+            The embeddings for the image and/or text.
+
+        Raises:
+            VertexAIClientError: If the embeddings could not be generated.
+        """
+        try:
+            embedding_model = MultiModalEmbeddingModel.from_pretrained(
+                MULTIMODAL_EMBEDDING_MODEL,
+            )
+            text = text if text else None  # Ensure text is not "".
+            image = None
+            if image_uri:
+                image = Image.load_from_file(image_uri)
+
+            embeddings = embedding_model.get_embeddings(
+                image=image,
+                contextual_text=text,
+                dimension=EMBEDDING_DIMENSIONS,
+            )
+        except Exception as ex:
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
+            raise VertexAIClientError(
+                f"Could not get embeddings for image or text: {ex}",
+            ) from ex
         return embeddings.image_embedding, embeddings.text_embedding
 
     def outpaint_image(
@@ -505,64 +539,89 @@ class VertexAIClient:
         horizontal_alignment: str = "center",
         vertical_alignment: str = "center",
     ) -> dict[str, str]:
-        image = Image(gcs_uri=image_uri)
-        new_w, new_h = target_size
-        if vertical_alignment == "top":
-            vertical_offset_ratio = -1
-        elif vertical_alignment == "center":
-            vertical_offset_ratio = 0
-        elif vertical_alignment == "bottom":
-            vertical_offset_ratio = 1
+        """Outpaints an image.
 
-        if horizontal_alignment == "left":
-            horizontal_offset_ratio = -1
-        elif horizontal_alignment == "center":
-            horizontal_offset_ratio = 0
-        elif horizontal_alignment == "right":
-            horizontal_offset_ratio = 1
-        image_pil, mask_pil = image_utils.pad_image_and_mask(
-            image,
-            target_size=(new_w, new_h),
-            vertical_offset_ratio=vertical_offset_ratio,
-            horizontal_offset_ratio=horizontal_offset_ratio,
-        )
-        new_image = Image(image_utils.get_bytes_from_pil(image_pil))
-        bucket_name, file_name, _ = get_bucket_and_file_name(image_uri)
-        new_image_ext = mimetypes.guess_all_extensions(new_image._mime_type)[0]
-        timestamp_int = int(time.time())
-        new_image_file_name = f"{file_name}-outpaint-{timestamp_int}{new_image_ext}"
-        new_image_uri = self.storage_client.upload(
-            bucket_name=bucket_name,
-            contents=new_image._as_base64_string(),
-            mime_type=new_image._mime_type,
-            file_name=new_image_file_name,
-            sub_dir="outpainted",
-        )
+        Args:
+            image_uri: The URI of the image to outpaint.
+            target_size: The target size of the outpainted image.
+            horizontal_alignment: The horizontal alignment of the outpainted
+                image.
+            vertical_alignment: The vertical alignment of the outpainted image
 
-        new_mask = Image(image_utils.get_bytes_from_pil(mask_pil))
-        bucket_name, file_name, _ = get_bucket_and_file_name(image_uri)
-        new_mask_ext = mimetypes.guess_all_extensions(new_mask._mime_type)[0]
-        new_mask_file_name = f"{file_name}-mask{new_mask_ext}"
-        new_mask_uri = self.storage_client.upload(
-            bucket_name=bucket_name,
-            contents=new_mask._as_base64_string(),
-            mime_type=new_mask._mime_type,
-            file_name=new_mask_file_name,
-            sub_dir="masks",
-        )
-        overlay = image_utils.overlay_mask(
-            new_image,
-            new_mask,
-        )
-        overlay_ext = mimetypes.guess_all_extensions(overlay._mime_type)[0]
-        overlay_file_name = f"{file_name}-overlay{overlay_ext}"
-        overlay_file_uri = self.storage_client.upload(
-            bucket_name=bucket_name,
-            contents=overlay._as_base64_string(),
-            mime_type=overlay._mime_type,
-            file_name=overlay_file_name,
-            sub_dir="overlays",
-        )
+        Returns:
+            The URIs of the outpainted image, mask and overlay.
+
+        Raises:
+            VertexAIClientError: If the image could not be outpainted.
+        """
+        try:
+            image = Image(gcs_uri=image_uri)
+            new_w, new_h = target_size
+            if vertical_alignment == "top":
+                vertical_offset_ratio = -1
+            elif vertical_alignment == "center":
+                vertical_offset_ratio = 0
+            elif vertical_alignment == "bottom":
+                vertical_offset_ratio = 1
+
+            if horizontal_alignment == "left":
+                horizontal_offset_ratio = -1
+            elif horizontal_alignment == "center":
+                horizontal_offset_ratio = 0
+            elif horizontal_alignment == "right":
+                horizontal_offset_ratio = 1
+            image_pil, mask_pil = image_utils.pad_image_and_mask(
+                image,
+                target_size=(new_w, new_h),
+                vertical_offset_ratio=vertical_offset_ratio,
+                horizontal_offset_ratio=horizontal_offset_ratio,
+            )
+            new_image = Image(image_utils.get_bytes_from_pil(image_pil))
+            bucket_name, file_name, _ = self.storage_client.get_storage_object_metadata(
+                image_uri,
+            )
+            new_image_ext = mimetypes.guess_all_extensions(new_image._mime_type)[0]
+            timestamp_int = int(time.time())
+            new_image_file_name = f"{file_name}-outpaint-{timestamp_int}{new_image_ext}"
+            new_image_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=new_image._as_base64_string(),
+                mime_type=new_image._mime_type,
+                file_name=new_image_file_name,
+                sub_dir="outpainted",
+            )
+
+            new_mask = Image(image_utils.get_bytes_from_pil(mask_pil))
+            bucket_name, file_name, _ = self.storage_client.get_storage_object_metadata(
+                image_uri,
+            )
+            new_mask_ext = mimetypes.guess_all_extensions(new_mask._mime_type)[0]
+            new_mask_file_name = f"{file_name}-mask{new_mask_ext}"
+            new_mask_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=new_mask._as_base64_string(),
+                mime_type=new_mask._mime_type,
+                file_name=new_mask_file_name,
+                sub_dir="masks",
+            )
+            overlay = image_utils.overlay_mask(
+                new_image,
+                new_mask,
+            )
+            overlay_ext = mimetypes.guess_all_extensions(overlay._mime_type)[0]
+            overlay_file_name = f"{file_name}-overlay{overlay_ext}"
+            overlay_file_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=overlay._as_base64_string(),
+                mime_type=overlay._mime_type,
+                file_name=overlay_file_name,
+                sub_dir="overlays",
+            )
+        except Exception as ex:
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
+            raise VertexAIClientError(
+                f"Could not outpaint image {ex}",
+            ) from ex
         return {
             "image_uri": new_image_uri,
             "mask_uri": new_mask_uri,
@@ -579,6 +638,23 @@ class VertexAIClient:
         horizontal_alignment: str | None = None,
         vertical_alignment: str | None = None,
     ) -> dict[str, str]:
+        """Segments an image.
+
+        Args:
+            image_uri: The URI of the image to segment.
+            mode: The segmentation mode.
+            prompt: The prompt to use for segmentation.
+            scribble: The scribble to use for segmentation.
+            target_size: The target size of the segmented image.
+            horizontal_alignment: The horizontal alignment of the image.
+            vertical_alignment: The vertical alignment of the image
+
+        Returns:
+            The URI of the segmented image, mask and overlay.
+
+        Raises:
+            VertexAIClientError: If the image could not be segmented.
+        """
         if mode == "user_provided":
             return self.outpaint_image(
                 image_uri,
@@ -586,51 +662,51 @@ class VertexAIClient:
                 horizontal_alignment=horizontal_alignment,
                 vertical_alignment=vertical_alignment,
             )
-        segmentation_model = ImageSegmentationModel.from_pretrained(
-            IMAGE_SEGMENTATION_MODEL,
-        )
-        base_image = Image.load_from_file(image_uri)
-        segmented_image = segmentation_model.segment_image(
-            base_image=base_image,
-            prompt=prompt if prompt else None,
-            scribble=scribble,
-            mode=mode,
-        )
-        segmented_image_mime_type = segmented_image.masks[0]._mime_type
-        bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
-        extension = mimetypes.guess_all_extensions(segmented_image_mime_type)[0]
-        timestamp_int = int(time.time())
-        mask_file_name = f"{file_name}-mask-{timestamp_int}{extension}"
+        try:
+            segmentation_model = ImageSegmentationModel.from_pretrained(
+                IMAGE_SEGMENTATION_MODEL,
+            )
+            base_image = Image.load_from_file(image_uri)
+            segmented_image = segmentation_model.segment_image(
+                base_image=base_image,
+                prompt=prompt if prompt else None,
+                scribble=scribble,
+                mode=mode,
+            )
+            segmented_image_mime_type = segmented_image.masks[0]._mime_type
+            bucket_name, file_name, extension = (
+                self.storage_client.get_storage_object_metadata(image_uri)
+            )
+            extension = mimetypes.guess_all_extensions(segmented_image_mime_type)[0]
+            timestamp_int = int(time.time())
+            mask_file_name = f"{file_name}-mask-{timestamp_int}{extension}"
 
-        mask_file_uri = self.storage_client.upload(
-            bucket_name=bucket_name,
-            contents=segmented_image.masks[0]._as_base64_string(),
-            mime_type=segmented_image.masks[0]._mime_type,
-            file_name=mask_file_name,
-            sub_dir="masks",
-        )
-        overlay = image_utils.overlay_mask(
-            base_image,
-            segmented_image.masks[0],
-        )
-        overlay_file_name = f"{file_name}-overlay{extension}"
-        overlay_file_uri = self.storage_client.upload(
-            bucket_name=bucket_name,
-            contents=overlay._as_base64_string(),
-            mime_type=overlay._mime_type,
-            file_name=overlay_file_name,
-            sub_dir="overlays",
-        )
+            mask_file_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=segmented_image.masks[0]._as_base64_string(),
+                mime_type=segmented_image.masks[0]._mime_type,
+                file_name=mask_file_name,
+                sub_dir="masks",
+            )
+            overlay = image_utils.overlay_mask(
+                base_image,
+                segmented_image.masks[0],
+            )
+            overlay_file_name = f"{file_name}-overlay{extension}"
+            overlay_file_uri = self.storage_client.upload(
+                bucket_name=bucket_name,
+                contents=overlay._as_base64_string(),
+                mime_type=overlay._mime_type,
+                file_name=overlay_file_name,
+                sub_dir="overlays",
+            )
+        except Exception as ex:
+            logging.exception("VertexAIClient: Something went wrong: %s", ex)
+            raise VertexAIClientError(
+                f"Could not segment image {ex}",
+            ) from ex
         return {
             "mask_uri": mask_file_uri,
             "overlay_uri": overlay_file_uri,
             "image_uri": image_uri,
         }
-
-
-def get_bucket_and_file_name(file_uri: str) -> tuple[str, str, str]:
-    image_uri_parts = file_uri.split("/")
-    bucket_name = image_uri_parts[2]
-    base_name = os.path.basename(file_uri)
-    file_name, extension = os.path.splitext(base_name)
-    return bucket_name, file_name, extension

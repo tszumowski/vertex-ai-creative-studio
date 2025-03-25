@@ -1,3 +1,19 @@
+# Copyright 2025 Google LLC.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Module to interact with Google Cloud AI Platform."""
+
 from __future__ import annotations
 
 import os
@@ -8,12 +24,12 @@ import google.auth
 import requests
 from absl import logging
 from google.cloud import aiplatform
+from tenacity import retry, stop_after_attempt, wait_exponential
 from vertexai.preview.vision_models import Image
 
 from common.clients import storage_client_lib
 from common.models.edit_mode import EditMode
 from common.models.edit_params import EditParams
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 AIPLATFORM_REGIONAL_ENDPOINT = "{region}-aiplatform.googleapis.com"
 VIDEO_GENERATION_ENDPOINT = (
@@ -198,7 +214,9 @@ class AIPlatformClient:
                 image_editing_endpoint,
                 req,
             )
-            bucket_name, file_name, extension = get_bucket_and_file_name(image_uri)
+            bucket_name, file_name, extension = (
+                self.storage_client.get_storage_object_metadata(image_uri)
+            )
             timestamp_int = int(time.time())
             edited_file_name = f"{file_name}-edited-{timestamp_int}{extension}"
 
@@ -260,6 +278,15 @@ class AIPlatformClient:
         video_fetch_endpoint: str,
         lro_name: str,
     ) -> dict[str, Any] | None:
+        """Polls the video generation operation.
+
+        Args:
+            video_fetch_endpoint: The URL of the video generation operation.
+            lro_name: The name of the video generation operation.
+
+        Returns:
+            The response from the video generation operation once finished.
+        """
         request = {"operationName": lro_name}
         # The generation usually takes 2 minutes. Loop 30 times, around 5 minutes.
         for _ in range(30):
@@ -268,11 +295,3 @@ class AIPlatformClient:
                 return resp
             time.sleep(10)
         return None
-
-
-def get_bucket_and_file_name(file_uri: str) -> tuple[str, str, str]:
-    image_uri_parts = file_uri.split("/")
-    bucket_name = image_uri_parts[2]
-    base_name = os.path.basename(file_uri)
-    file_name, extension = os.path.splitext(base_name)
-    return bucket_name, file_name, extension
