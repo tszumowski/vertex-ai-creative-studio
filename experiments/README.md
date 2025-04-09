@@ -6,6 +6,11 @@ The experimental folder contains features not yet ready for inclusion into the m
 
 We'd love to hear your feedback on these!
 
+## Creative Podcast Assistant
+
+* notebook example - create a podcast from audio and other sources
+
+
 ## Arena - rate images
 
 A stand-alone application to rate Model Garden image generation models, including Imagen 2, 3 and others!
