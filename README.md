@@ -11,6 +11,7 @@ This app is built with [Mesop](https://mesop-dev.github.io/mesop/), a Python-bas
 We're releasing stand-alone applications in advance of integration into the main GenMedia Creative Studio. Please see the [experiments](/experiments/) folder for new, upcoming capbilities.
 * Babel - Chirp 3: HD Voices
 * Arena - rate Model Garden image models
+* Creative Podcast Assistant - create a podcast using Chirp 3, using audio and other sources
 
 ## GenMedia | Creative Studio
 
