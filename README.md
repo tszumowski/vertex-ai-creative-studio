@@ -12,6 +12,7 @@ We're releasing stand-alone applications in advance of integration into the main
 * Babel - Chirp 3: HD Voices
 * Arena - rate Model Garden image models
 * Creative Podcast Assistant - create a podcast using Chirp 3, using audio and other sources
+* Veo - a stand-alone Veo app
 
 ## GenMedia | Creative Studio
 

@@ -6,6 +6,12 @@ The experimental folder contains features not yet ready for inclusion into the m
 
 We'd love to hear your feedback on these!
 
+## Veo
+
+A stand-alone application for generative video creation with Veo!
+
+![](assets/veo-app.png)
+
 ## Creative Podcast Assistant
 
 * notebook example - create a podcast from audio and other sources

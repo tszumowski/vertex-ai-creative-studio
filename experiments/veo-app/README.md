@@ -27,7 +27,7 @@ It's built using the Mesop scaffold for Studio style apps.
 
 ### Cloud Firestore
 
-We will be using [Cloud Firestore](https://firebase.google.com/docs/firestore), a NoSQL cloud database that is part of the Firebase ecosystem and built on Google Cloud infrastructure, to save generated image metadata and ELO scores for the leaderboard.
+We will be using [Cloud Firestore](https://firebase.google.com/docs/firestore), a NoSQL cloud database that is part of the Firebase ecosystem and built on Google Cloud infrastructure, to save generated video metadata for the Library.
 
 > If you're new to Firebase, a great starting point is [here](https://firebase.google.com/docs/projects/learn-more#firebase-cloud-relationship).
 
@@ -35,10 +35,9 @@ Go to your Firebase project and create a database. Instructions on how to do thi
 
 Next do the following steps:
 
-1. Create a collection called `genmedia`. This is the default collection name. 
+* Create a collection called `genmedia`. This is the default collection name. 
 
 The name of the collections can be changed via environment variables in the `.env` file, by setting the environment variable `GENMEDIA_COLLECTIONS_NAME` to your chosen collection name.
-
 
 
 
