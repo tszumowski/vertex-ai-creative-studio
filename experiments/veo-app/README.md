@@ -7,13 +7,13 @@ This is the initial experiment for the Veo addition to Vertex AI Creative Studio
 
 Current featureset
 * Create a video from a prompt (text to video)
-* Firestore indexing of generated videos
+* Library: Display the previous stored videos from Firestore index
 
 Future featureset
 
-* Prompt rewriter
-* Library display of generated videos from Firestore indexing of stored videos
 * Image to video
+* Prompt rewriter
+* Additional Veo features: seed, negative prompt, person generation control
 * Advanced Veo features
 * Integration into main GenMedia Creative Studio
 
@@ -45,12 +45,12 @@ The name of the collections can be changed via environment variables in the `.en
 
 A python virtual environment, with required packages installed.
 
-Using [uv](https://github.com/astral-sh/uv):
+Using the [uv](https://github.com/astral-sh/uv) virtual environment and package manager:
 
 ```
 # sync a virtual environment
 uv sync # or: uv sync --upgrade
-# activate the virtual environ,ent
+# activate the virtual environment
 . venv/bin/activate
 ```
 
