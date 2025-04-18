@@ -89,9 +89,11 @@ def veo_content(app_state: me.state):
 
                 # Uploaded image
                 with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
-                    me.text("Uploaded Image")
+                    me.text("Reference Image (optional)")
                     me.image(src=None, style=me.Style(height=200))
-                    me.button(label="Upload", type="flat")
+                    with me.box(style=me.Style(display="flex", flex_direction="row", gap=5)):
+                        me.button(label="Upload", type="flat", disabled=True )
+                        me.button(label="Clear", disabled=True)
 
             me.box(style=me.Style(height=30))
 
@@ -110,9 +112,6 @@ def veo_content(app_state: me.state):
                         print(f"video_url: {video_url}")
                         me.video(src=video_url)
                         me.text(state.timing)
-                # me.video(
-                #    src="https://storage.mtls.cloud.google.com/ghchinoy-genai-sa-assets/videos/beach_2025-02-12-18-45-26-combined-audio-video.mp4"
-                # )
 
 
 def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
