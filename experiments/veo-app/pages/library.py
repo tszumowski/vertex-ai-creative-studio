@@ -63,6 +63,11 @@ def library_content(app_state: me.state):
                     prompt = m.get("prompt")
                     generation_time = m.get("generation_time")
                     timestamp = m.get("timestamp").strftime("%Y-%m-%d %H:%M")
+                    duration = m.get("duration")
+                    if duration:
+                        video_length = f"{duration} seconds"
+                    else:
+                        video_length = "Unknown"
                     with me.box(
                         style=me.Style(
                             padding=me.Padding.all(10),
@@ -75,6 +80,7 @@ def library_content(app_state: me.state):
                     ):
                         me.text(f"Generated Video: {timestamp}", style=me.Style(font_weight="bold"))
                         me.text(f"Aspect ratio: {aspect}")
+                        me.text(f"Length: {video_length}")
                         me.text(f"\"{prompt}\"")
                         me.html(f"<a href='{video_url}' target='_blank'>video</a>")
                         me.text(f"Generated in {round(generation_time)} seconds.")

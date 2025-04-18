@@ -29,7 +29,7 @@ config = Default()
 db = FirebaseClient(database_id=config.GENMEDIA_FIREBASE_DB).get_client()
 
 
-def add_video_metadata(gcsuri: str, prompt: str, aspect_ratio: str, model: str, generation_time: float):
+def add_video_metadata(gcsuri: str, prompt: str, aspect_ratio: str, model: str, generation_time: float, duration: int):
     """Add Video metadata to Firestore persistence"""
 
     current_datetime = datetime.datetime.now()
@@ -42,6 +42,7 @@ def add_video_metadata(gcsuri: str, prompt: str, aspect_ratio: str, model: str, 
             "prompt": prompt,
             "model": model,
             "aspect": aspect_ratio,
+            "duration": duration,
             "generation_time": generation_time,
             "timestamp": current_datetime,  # alt: firestore.SERVER_TIMESTAMP
         }

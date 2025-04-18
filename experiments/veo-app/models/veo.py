@@ -75,6 +75,7 @@ def compose_videogen_request(
     aspect_ratio,
     sample_count,
     enable_prompt_rewriting,
+    duration_seconds,
 ):
     """ Create a JSON Request for Veo """
     instance = {"prompt": prompt}
@@ -88,15 +89,16 @@ def compose_videogen_request(
             "seed": seed,
             "aspectRatio": aspect_ratio,
             "enablePromptRewriting": enable_prompt_rewriting,
+            "durationSeconds": duration_seconds
         },
     }
     return request
 
 
-def text_to_video(prompt, seed, aspect_ratio, sample_count, output_gcs, enable_pr):
+def text_to_video(prompt, seed, aspect_ratio, sample_count, output_gcs, enable_pr, duration_seconds):
     """Text to video"""
     req = compose_videogen_request(
-        prompt, None, output_gcs, seed, aspect_ratio, sample_count, enable_pr
+        prompt, None, output_gcs, seed, aspect_ratio, sample_count, enable_pr, duration_seconds
     )
     resp = send_request_to_google_api(t2v_prediction_endpoint, req)
     print(resp)
@@ -104,11 +106,11 @@ def text_to_video(prompt, seed, aspect_ratio, sample_count, output_gcs, enable_p
 
 
 def image_to_video(
-    prompt, image_gcs, seed, aspect_ratio, sample_count, output_gcs, enable_pr
+    prompt, image_gcs, seed, aspect_ratio, sample_count, output_gcs, enable_pr, duration_seconds
 ):
     """Image to video"""
     req = compose_videogen_request(
-        prompt, image_gcs, output_gcs, seed, aspect_ratio, sample_count, enable_pr
+        prompt, image_gcs, output_gcs, seed, aspect_ratio, sample_count, enable_pr, duration_seconds
     )
     resp = send_request_to_google_api(t2v_prediction_endpoint, req)
     print(resp)
