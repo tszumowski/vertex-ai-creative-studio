@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import time
+
 import mesop as me
 import requests
 
+from common.metadata import add_video_metadata
 from components.header import header
 from components.page_scaffold import (
     page_frame,
@@ -25,8 +27,6 @@ from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import text_to_video
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
-from common.metadata import add_video_metadata
-
 
 config = Default()
 
@@ -45,6 +45,9 @@ class PageState:
 
     prompt: str
     original_prompt: str
+
+    aspect_ratio: str = "16:9"
+    video_length: int = 5
 
     reference_image: str
 
@@ -81,18 +84,48 @@ def veo_content(app_state: me.state):
                         flex_direction="column",
                         align_items="stretch",
                         justify_content="space-between",
+                        gap=10,
                     )
                 ):
                     subtle_veo_input()
                     # me.box(style=me.Style(height=12))
                     # me.text("no video generated")
 
+                    with me.box(
+                        style=me.Style(display="flex", flex_basis="row", gap=5)
+                    ):
+                        me.select(
+                            label="aspect",
+                            appearance="outline",
+                            options=[
+                                me.SelectOption(label="16:9 widescreen", value="16:9"),
+                                me.SelectOption(label="9:16 portrait", value="9:16"),
+                            ],
+                            value=state.aspect_ratio,
+                            on_selection_change=on_selection_change_aspect,
+                        )
+                        me.select(
+                            label="length",
+                            options=[
+                                me.SelectOption(label="5 seconds", value="5"),
+                                me.SelectOption(label="6 seconds", value="6"),
+                                me.SelectOption(label="7 seconds", value="7"),
+                                me.SelectOption(label="8 seconds", value="8"),
+                            ],
+                            appearance="outline",
+                            style=me.Style(),
+                            value=f"{state.video_length}",
+                            on_selection_change=on_selection_change_length,
+                        )
+
                 # Uploaded image
                 with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
                     me.text("Reference Image (optional)")
                     me.image(src=None, style=me.Style(height=200))
-                    with me.box(style=me.Style(display="flex", flex_direction="row", gap=5)):
-                        me.button(label="Upload", type="flat", disabled=True )
+                    with me.box(
+                        style=me.Style(display="flex", flex_direction="row", gap=5)
+                    ):
+                        me.button(label="Upload", type="flat", disabled=True)
                         me.button(label="Clear", disabled=True)
 
             me.box(style=me.Style(height=30))
@@ -114,12 +147,26 @@ def veo_content(app_state: me.state):
                         me.text(state.timing)
 
 
+def on_selection_change_length(e: me.SelectSelectionChangeEvent):
+    """Adjust the video length in seconds based on user event"""
+    state = me.state(PageState)
+    state.video_length = int(e.value)
+
+
+def on_selection_change_aspect(e: me.SelectSelectionChangeEvent):
+    """Adjust aspect ratio based on user event."""
+    state = me.state(PageState)
+    state.aspect_ratio = e.value
+
+
 def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     """Clear prompt and video"""
     state = me.state(PageState)
     state.result_video = None
     state.prompt = None
     state.original_prompt = None
+    state.video_length = 5
+    state.aspect_ratio = "16:9"
     yield
 
 
@@ -131,10 +178,11 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
 
     print(f"Lights, camera, action!:\n{state.veo_prompt_input}")
 
-    aspect_ratio = "16:9"  # @param ["16:9", "9:16"]
-    rewrite_prompt = False
+    aspect_ratio = state.aspect_ratio  # @param ["16:9", "9:16"]
     seed = 120
     sample_count = 1
+    rewrite_prompt = False
+    duration_seconds = state.video_length
 
     start_time = time.time()  # Record the starting time
 
@@ -146,6 +194,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
             sample_count,
             f"gs://{config.VIDEO_BUCKET}",
             rewrite_prompt,
+            duration_seconds,
         )
         print(f"Ok {op}")
         gcs_uri = ""
@@ -192,7 +241,12 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
     state.timing = f"Generation time: {round(execution_time)} seconds"
 
     add_video_metadata(
-        gcs_uri, state.veo_prompt_input, aspect_ratio, veo_model, execution_time
+        gcs_uri,
+        state.veo_prompt_input,
+        aspect_ratio,
+        veo_model,
+        execution_time,
+        state.video_length,
     )
 
     state.is_loading = False
