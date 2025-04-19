@@ -80,17 +80,21 @@ def media_tile(label: str, icon: str, route: str):
             align_items="center",
             border=me.Border().all(me.BorderSide(style="solid")),
             border_radius=12,
-            height=200, width=200,
+            height=200,
+            width=200,
             justify_content="center",
             background=me.theme_var("secondary-container"),
+            cursor="pointer"
         ),
         on_click=go_to_page,
         key=route,
     ):
         with me.content_button(
-            on_click=go_to_page, 
-            key=route, 
+            #on_click=go_to_page,
+            #key=route,
             style=me.Style(font_size="18px"),
         ):
-            me.icon(icon, style=me.Style(font_size="48pt", width="100px", height="60px")),
+            me.icon(
+                icon, style=me.Style(font_size="48pt", width="100px", height="60px")
+            )
             me.text(label)
