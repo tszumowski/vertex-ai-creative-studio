@@ -25,8 +25,10 @@ from components.page_scaffold import (
 )
 from config.default import Default
 from models.model_setup import VeoModelSetup
-from models.veo import text_to_video
+from models.veo import text_to_video, image_to_video
+from common.storage import store_to_gcs
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
+
 
 config = Default()
 
@@ -49,7 +51,11 @@ class PageState:
     aspect_ratio: str = "16:9"
     video_length: int = 5
 
-    reference_image: str
+    # I2V reference Image
+    reference_image_file: me.UploadedFile = None
+    reference_image_file_key: int = 0
+    reference_image_gcs: str
+    reference_image_uri: str
 
     rewriter_name: str
 
@@ -121,12 +127,38 @@ def veo_content(app_state: me.state):
                 # Uploaded image
                 with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
                     me.text("Reference Image (optional)")
-                    me.image(src=None, style=me.Style(height=200))
+
+                    if state.reference_image_uri:
+                        output_url = state.reference_image_uri
+                        # output_url = f"https://storage.mtls.cloud.google.com/{state.reference_image_uri}"
+                        # output_url = "https://storage.mtls.cloud.google.com/ghchinoy-genai-sa-assets-flat/edits/image (30).png"
+                        print(f"displaying {output_url}")
+                        me.image(
+                            src=output_url,
+                            style=me.Style(
+                                height=150,
+                                border_radius=12,
+                            ),
+                            key=str(state.reference_image_file_key),
+                        )
+                    else:
+                        me.image(src=None, style=me.Style(height=200))
+
                     with me.box(
                         style=me.Style(display="flex", flex_direction="row", gap=5)
                     ):
-                        me.button(label="Upload", type="flat", disabled=True)
-                        me.button(label="Clear", disabled=True)
+                        # me.button(label="Upload", type="flat", disabled=True)
+                        me.uploader(
+                            label="Upload",
+                            accepted_file_types=["image/jpeg", "image/png"],
+                            on_upload=on_click_upload,
+                            type="flat",
+                            color="primary",
+                            style=me.Style(font_weight="bold"),
+                        )
+                        me.button(
+                            label="Clear", on_click=on_click_clear_reference_image
+                        )
 
             me.box(style=me.Style(height=30))
 
@@ -147,8 +179,38 @@ def veo_content(app_state: me.state):
                         me.text(state.timing)
 
 
+def on_click_upload(e: me.UploadEvent):
+    """Upload image to GCS"""
+    state = me.state(PageState)
+    state.reference_image_file = e.file
+    contents = e.file.getvalue()
+    destination_blob_name = store_to_gcs(
+        "uploads", e.file.name, e.file.mime_type, contents
+    )
+    # gcs
+    state.reference_image_gcs = f"gs://{destination_blob_name}"
+    # url
+    state.reference_image_uri = (
+        f"https://storage.mtls.cloud.google.com/{destination_blob_name}"
+    )
+    # log
+    print(
+        f"{destination_blob_name} with contents len {len(contents)} of type {e.file.mime_type} uploaded to {config.GENMEDIA_BUCKET}."
+    )
+
+
+def on_click_clear_reference_image(e: me.ClickEvent):  # pylint: disable=unused-argument
+    """Clear reference image"""
+    state = me.state(PageState)
+    state.reference_image_file = None
+    state.reference_image_file_key += 1
+    state.reference_image_uri = None
+    state.reference_image_gcs = None
+    state.is_loading = False
+
+
 def on_selection_change_length(e: me.SelectSelectionChangeEvent):
-    """Adjust the video length in seconds based on user event"""
+    """Adjust the video duration length in seconds based on user event"""
     state = me.state(PageState)
     state.video_length = int(e.value)
 
@@ -167,6 +229,7 @@ def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     state.original_prompt = None
     state.video_length = 5
     state.aspect_ratio = "16:9"
+    state.is_loading = False
     yield
 
 
@@ -187,15 +250,29 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
     start_time = time.time()  # Record the starting time
 
     try:
-        op = text_to_video(
-            state.veo_prompt_input,
-            seed,
-            aspect_ratio,
-            sample_count,
-            f"gs://{config.VIDEO_BUCKET}",
-            rewrite_prompt,
-            duration_seconds,
-        )
+        if state.reference_image_gcs:
+            print(f"I2V invoked. I see you have an image! {state.reference_image_gcs} ")
+            op = image_to_video(
+                state.veo_prompt_input,
+                state.reference_image_gcs,
+                seed,
+                aspect_ratio,
+                sample_count,
+                f"gs://{config.VIDEO_BUCKET}",
+                rewrite_prompt,
+                duration_seconds,
+            )
+        else:
+            print("T2V invoked.")
+            op = text_to_video(
+                state.veo_prompt_input,
+                seed,
+                aspect_ratio,
+                sample_count,
+                f"gs://{config.VIDEO_BUCKET}",
+                rewrite_prompt,
+                duration_seconds,
+            )
         print(f"Ok {op}")
         gcs_uri = ""
         if op["response"]:
@@ -247,6 +324,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
         veo_model,
         execution_time,
         state.video_length,
+        state.reference_image_gcs,
     )
 
     state.is_loading = False
