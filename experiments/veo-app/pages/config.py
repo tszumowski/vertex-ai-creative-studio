@@ -40,8 +40,10 @@ def get_config_table():
                 "Veo Project",
                 "Veo Model ID",
                 "Veo Experimental Model ID",
-                "Video Bucket",
-                "Image Bucket",
+                "GenMedia Bucket",
+                #"Video Bucket",
+                #"Image Bucket",
+                "GenMedia Collection",
             ],
             "Value": [
                 Default.INIT_VERTEX,
@@ -51,8 +53,10 @@ def get_config_table():
                 Default.VEO_PROJECT_ID,
                 Default.VEO_MODEL_ID,
                 Default.VEO_EXP_MODEL_ID,
-                f"gs://{Default.VIDEO_BUCKET}",
-                f"gs://{Default.IMAGE_BUCKET}",
+                f"gs://{Default.GENMEDIA_BUCKET}",
+                #f"gs://{Default.VIDEO_BUCKET}",
+                #f"gs://{Default.IMAGE_BUCKET}",
+                f"{Default.GENMEDIA_FIREBASE_DB} / {Default.GENMEDIA_COLLECTION_NAME}",
             ]
         }
     )

@@ -78,7 +78,7 @@ def media_tile(label: str, icon: str, route: str):
             flex_direction="row",
             gap=5,
             align_items="center",
-            border=me.Border().all(me.BorderSide(style="solid")),
+            border=me.Border().all(me.BorderSide(style="solid", color=me.theme_var("tertiary-fixed-variant"))),
             border_radius=12,
             height=200,
             width=200,
