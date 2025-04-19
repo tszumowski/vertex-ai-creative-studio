@@ -15,13 +15,12 @@
 
 import mesop as me
 
+from common.metadata import get_latest_videos
 from components.header import header
 from components.page_scaffold import (
-    page_scaffold,
     page_frame,
+    page_scaffold,
 )
-
-from common.metadata import get_latest_videos
 
 
 @me.stateclass
@@ -86,10 +85,12 @@ def library_content(app_state: me.state):
                             f"Generated Video: {timestamp}",
                             style=me.Style(font_weight="bold"),
                         )
-                        
+
                         with me.box(
                             style=me.Style(
-                                display="flex", flex_direction="row", gap=3,
+                                display="flex",
+                                flex_direction="row",
+                                gap=3,
                             )
                         ):
                             if reference_image:
@@ -101,25 +102,33 @@ def library_content(app_state: me.state):
                             pill("24 fps", "fps")
                             if auto_enhanced_prompt:
                                 me.icon("auto_fix_normal")
-                        
+
                         me.text(f'"{prompt}"')
-                        with me.box(style=me.Style(gap=3, display="flex", flex_basis="row")):
-                            me.video(src=video_url, style=me.Style(height=150, border_radius=5))
+                        with me.box(
+                            style=me.Style(gap=3, display="flex", flex_basis="row")
+                        ):
+                            me.video(
+                                src=video_url,
+                                style=me.Style(height=150, border_radius=6),
+                            )
                             if reference_image:
                                 reference_image = reference_image.replace(
                                     "gs://",
                                     "https://storage.mtls.cloud.google.com/",
                                 )
-                                me.image(src=reference_image, style=me.Style(height=50, border_radius=5))
-                        #me.html(f"<a href='{video_url}' target='_blank'>video</a>")
+                                me.image(
+                                    src=reference_image,
+                                    style=me.Style(height=75, border_radius=6),
+                                )
+                        # me.html(f"<a href='{video_url}' target='_blank'>video</a>")
                         me.text(f"Generated in {round(generation_time)} seconds.")
                         me.divider()
-                        
+
 
 @me.component
 def pill(label: str, pill_type: str):
     """Pill display"""
-    
+
     background = me.theme_var("on-secondary-fixed-variant")
     match pill_type:
         case "aspect":
@@ -129,7 +138,7 @@ def pill(label: str, pill_type: str):
                 background = me.theme_var("on-primary-fixed")
             else:
                 background = me.theme_var("on-primary-fixed-variant")
-    
+
     me.text(
         label,
         style=me.Style(
@@ -140,7 +149,7 @@ def pill(label: str, pill_type: str):
             font_size="8pt",
             font_weight="bold",
             display="inline-flex",
-            padding=me.Padding.all(5)
+            padding=me.Padding.all(5),
         ),
     )
 

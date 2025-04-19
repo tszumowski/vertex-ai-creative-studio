@@ -177,8 +177,8 @@ def veo_content(app_state: me.state):
                             "gs://",
                             "https://storage.mtls.cloud.google.com/",
                         )
-                        print(f"video_url: {video_url}")
-                        me.video(src=video_url)
+                        print(f"video_url: {video_url}" )
+                        me.video(src=video_url, style=me.Style(border_radius=6))
                         me.text(state.timing)
 
 
