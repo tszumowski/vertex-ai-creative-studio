@@ -49,7 +49,7 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                 header("Welcome", "home")
 
                 me.text(
-                    "Welcome to the Veo app, a component of Vertex AI GenMedia Creative Studio"
+                    "Welcome to the Veo module, a component of Vertex AI GenMedia Creative Studio"
                 )
 
                 me.box(style=me.Style(height=16))
@@ -59,29 +59,38 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                         align_items="center",
                         display="flex",
                         flex_direction="row",
-                        gap=5,
+                        align_content="center",
+                        justify_content="center",
+                        gap=15,
                     ),
                 ):
-                    with me.box(
-                        style=me.Style(
-                            display="flex",
-                            flex_direction="row",
-                            gap=5,
-                            align_items="center",
-                        )
-                    ):
-                        with me.content_button(on_click=go_to_page, key="/veo"):
-                            me.icon("movie")
-                            me.text("Go to Veo")
+                    media_tile("Veo", "movie", "/veo")
+                    media_tile("Library", "perm_media", "/library")
+                    media_tile("Settings", "settings", "/config")
 
-                    with me.box(
-                        style=me.Style(
-                            display="flex",
-                            flex_direction="row",
-                            gap=5,
-                            align_items="center",
-                        )
-                    ):
-                        with me.content_button(on_click=go_to_page, key="/config"):
-                            me.icon("settings")
-                            me.text("Go to Settings")
+
+@me.component
+def media_tile(label: str, icon: str, route: str):
+    """Media component"""
+    with me.box(
+        style=me.Style(
+            display="flex",
+            flex_direction="row",
+            gap=5,
+            align_items="center",
+            border=me.Border().all(me.BorderSide(style="solid")),
+            border_radius=12,
+            height=200, width=200,
+            justify_content="center",
+            background=me.theme_var("secondary-container"),
+        ),
+        on_click=go_to_page,
+        key=route,
+    ):
+        with me.content_button(
+            on_click=go_to_page, 
+            key=route, 
+            style=me.Style(font_size="18px"),
+        ):
+            me.icon(icon, style=me.Style(font_size="48pt", width="100px", height="60px")),
+            me.text(label)
