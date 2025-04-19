@@ -81,8 +81,6 @@ Using the [uv](https://github.com/astral-sh/uv) virtual environment and package 
 ```
 # sync the requirements to a virtual environment
 uv sync
-# activate the virtual environment
-. .venv/bin/activate
 ```
 
 If you've done this before, you can also use the command `uv sync --upgrade` to check for any package version upgrades.
@@ -103,9 +101,28 @@ See the template dotenv.template file for the defaults and what environment vari
 
 ## GenMedia Creative Studio - Veo Studio
 
+
+### Running
+
+Once you have your environment variables set, either on the command line or an in .env file:
+
+```bash
+uv run main.py
+```
+
+
+
+## Developing
+
+Using the mesop app in a virtual environment provides the best debugging and building experience as it supports hot reload.
+
+```bash
+. .venv/bin/activate
+```
+
 Start the app, use the mesop command in your python virutal environment
 
-```
+```bash
 mesop main.py
 ```
 
