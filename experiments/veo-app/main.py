@@ -11,20 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Main Mesop App """
-import os
-import mesop as me
+"""Main Mesop App"""
 
-from fastapi import FastAPI, APIRouter
+import os
+
+import mesop as me
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.wsgi import WSGIMiddleware
 
 from components.page_scaffold import page_scaffold
-from pages.home import home_page_content
-from pages.veo import veo_content
-from pages.lyria import lyria_content
 from pages.config import config_page_contents
+from pages.home import home_page_content
 from pages.imagen import imagen_content
 from pages.library import library_content
+from pages.lyria import lyria_content
+from pages.veo import veo_content
 from state.state import AppState
 
 # from pages.gemini2 import gemini_page_content
@@ -104,6 +105,7 @@ def library_page():
     """Library Page"""
     library_content(me.state(AppState))
 
+
 # @me.page(
 #     path="/gemini",
 #     title="Scaffold - Gemini",
@@ -116,14 +118,16 @@ def library_page():
 #         gemini_page_content(state)
 
 
-# Setup the server global objects
+# FastAPI server with Mesop
 app = FastAPI()
 router = APIRouter()
 app.include_router(router)
 
+
 @app.get("/hello")
 def hello():
     return "world"
+
 
 app.mount(
     "/",
@@ -132,7 +136,7 @@ app.mount(
     ),
 )
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     import uvicorn
 
     host = os.environ.get("HOST", "0.0.0.0")
