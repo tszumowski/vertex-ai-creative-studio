@@ -78,6 +78,10 @@ def compose_videogen_request(
     duration_seconds,
 ):
     """ Create a JSON Request for Veo """
+    enhance_prompt = "no"
+    if enable_prompt_rewriting:
+        enhance_prompt = "yes"
+
     instance = {"prompt": prompt}
     if image_uri:
         instance["image"] = {"gcsUri": image_uri, "mimeType": "png"}
@@ -90,6 +94,7 @@ def compose_videogen_request(
             "aspectRatio": aspect_ratio,
             "enablePromptRewriting": enable_prompt_rewriting,
             "durationSeconds": duration_seconds,
+            "enhancePrompt": enhance_prompt,
         },
     }
     return request
