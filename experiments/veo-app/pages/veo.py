@@ -227,6 +227,7 @@ def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     state.result_video = None
     state.prompt = None
     state.original_prompt = None
+    state.veo_prompt_textarea_key += 1
     state.video_length = 5
     state.aspect_ratio = "16:9"
     state.is_loading = False
