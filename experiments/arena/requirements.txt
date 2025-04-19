@@ -54,7 +54,7 @@ mesop==1.0.1
 msgpack==1.1.0
 numpy==2.2.4
 ordered-set==4.1.0
-packaging==24.2
+packaging==25.0
 pandas==2.2.3
 pillow==11.1.0
 proto-plus==1.26.1
