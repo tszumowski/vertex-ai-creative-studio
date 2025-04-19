@@ -112,7 +112,7 @@ uv run main.py
 
 
 
-## Developing
+### Developing
 
 Using the mesop app in a virtual environment provides the best debugging and building experience as it supports hot reload.
 
