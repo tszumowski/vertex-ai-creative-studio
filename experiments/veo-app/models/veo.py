@@ -31,7 +31,7 @@ config = Default()
 load_dotenv(override=True)
 
 #video_model, prediction_endpoint, fetch_endpoint = VeoModelSetup.init()
-t2v_video_model = f"https://us-central1-aiplatform.googleapis.com/v1beta1/projects/{config.VEO_PROJECT_ID}/locations/us-central1/publishers/google/models/{config.VEO_MODEL_ID}"
+t2v_video_model = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{config.VEO_PROJECT_ID}/locations/us-central1/publishers/google/models/{config.VEO_MODEL_ID}"
 t2v_prediction_endpoint = f"{t2v_video_model}:predictLongRunning"
 fetch_endpoint = f"{t2v_video_model}:fetchPredictOperation"
 
@@ -89,7 +89,7 @@ def compose_videogen_request(
             "seed": seed,
             "aspectRatio": aspect_ratio,
             "enablePromptRewriting": enable_prompt_rewriting,
-            "durationSeconds": duration_seconds
+            "durationSeconds": duration_seconds,
         },
     }
     return request
