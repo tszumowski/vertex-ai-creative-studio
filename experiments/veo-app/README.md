@@ -62,11 +62,14 @@ A python virtual environment, with required packages installed.
 Using the [uv](https://github.com/astral-sh/uv) virtual environment and package manager:
 
 ```
-# sync a virtual environment
-uv sync # or: uv sync --upgrade
+# sync the requirements to a virtual environment
+uv sync
 # activate the virtual environment
-. venv/bin/activate
+. .venv/bin/activate
 ```
+
+If you've done this before, you can also use the command `uv sync --upgrade` to check for any package version upgrades.
+
 
 ### Application Environment variables
 
