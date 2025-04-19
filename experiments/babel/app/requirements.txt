@@ -123,7 +123,7 @@ proto-plus==1.26.1
     #   google-api-core
     #   google-cloud-appengine-logging
     #   google-cloud-logging
-protobuf==5.29.4
+protobuf==6.30.2
     # via
     #   google-api-core
     #   google-cloud-appengine-logging
