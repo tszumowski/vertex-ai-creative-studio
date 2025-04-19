@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """ Main Mesop App """
+import os
 import mesop as me
+
+from fastapi import FastAPI, APIRouter
+from fastapi.middleware.wsgi import WSGIMiddleware
 
 from components.page_scaffold import page_scaffold
 from pages.home import home_page_content
@@ -110,3 +114,35 @@ def library_page():
 #     state = me.state(AppState)
 #     with page_scaffold():  # pylint: disable=not-context-manager
 #         gemini_page_content(state)
+
+
+# Setup the server global objects
+app = FastAPI()
+router = APIRouter()
+app.include_router(router)
+
+@app.get("/hello")
+def hello():
+    return "world"
+
+app.mount(
+    "/",
+    WSGIMiddleware(
+        me.create_wsgi_app(debug_mode=os.environ.get("DEBUG_MODE", "") == "true")
+    ),
+)
+
+if __name__ == "__main__":    
+    import uvicorn
+
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", "8080"))
+
+    uvicorn.run(
+        "main:app",
+        host=host,
+        port=port,
+        reload=True,
+        reload_includes=["*.py", "*.js"],
+        timeout_graceful_shutdown=0,
+    )
