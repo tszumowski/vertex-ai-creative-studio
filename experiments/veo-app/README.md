@@ -39,6 +39,20 @@ Next do the following steps:
 
 The name of the collection can be changed via environment variables in the `.env` file, by setting the environment variable `GENMEDIA_COLLECTIONS_NAME` to your chosen collection name.
 
+### Google Cloud Storage bucket
+
+You'll need a Google Cloud Storage bucket to hold the videos created and images uploaded.
+
+By default, if you don't specify a bucket name in one of the applicaiton environment variables below, it'll be YOUR_PROJECT_NAME-assets.
+
+You can create this like so:
+
+```bash
+export PROJECT_ID=$(gcloud config get project)
+gcloud storage mb -l us-central gs://${PROJECT_ID}-assets
+```
+
+
 
 
 ### Python virtual environment
