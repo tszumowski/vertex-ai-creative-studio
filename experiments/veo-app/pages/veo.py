@@ -18,6 +18,7 @@ import mesop as me
 import requests
 
 from common.metadata import add_video_metadata
+from common.storage import store_to_gcs
 from components.header import header
 from components.page_scaffold import (
     page_frame,
@@ -25,10 +26,8 @@ from components.page_scaffold import (
 )
 from config.default import Default
 from models.model_setup import VeoModelSetup
-from models.veo import text_to_video, image_to_video
-from common.storage import store_to_gcs
+from models.veo import image_to_video, text_to_video
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
-
 
 config = Default()
 
@@ -56,6 +55,9 @@ class PageState:
     reference_image_file_key: int = 0
     reference_image_gcs: str
     reference_image_uri: str
+
+    # Rewriter
+    auto_enhance_prompt: bool = False
 
     rewriter_name: str
 
@@ -123,6 +125,7 @@ def veo_content(app_state: me.state):
                             value=f"{state.video_length}",
                             on_selection_change=on_selection_change_length,
                         )
+                        me.checkbox(label="auto-enhance prompt", checked=state.auto_enhance_prompt, on_change=on_change_auto_enhance_prompt)
 
                 # Uploaded image
                 with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
@@ -179,6 +182,12 @@ def veo_content(app_state: me.state):
                         me.text(state.timing)
 
 
+def on_change_auto_enhance_prompt(e: me.CheckboxChangeEvent):
+    """Toggle auto-enhance prompt"""
+    state = me.state(PageState)
+    state.auto_enhance_prompt = e.checked
+
+
 def on_click_upload(e: me.UploadEvent):
     """Upload image to GCS"""
     state = me.state(PageState)
@@ -226,11 +235,13 @@ def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     state = me.state(PageState)
     state.result_video = None
     state.prompt = None
+    state.veo_prompt_input = None
     state.original_prompt = None
     state.veo_prompt_textarea_key += 1
     state.video_length = 5
     state.aspect_ratio = "16:9"
     state.is_loading = False
+    state.auto_enhance_prompt = False
     yield
 
 
@@ -245,7 +256,9 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
     aspect_ratio = state.aspect_ratio  # @param ["16:9", "9:16"]
     seed = 120
     sample_count = 1
-    rewrite_prompt = False
+    rewrite_prompt = state.auto_enhance_prompt
+    if rewrite_prompt:
+        print("Default auto-enhance prompt is ON")
     duration_seconds = state.video_length
 
     start_time = time.time()  # Record the starting time
@@ -326,6 +339,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
         execution_time,
         state.video_length,
         state.reference_image_gcs,
+        rewrite_prompt,
     )
 
     state.is_loading = False

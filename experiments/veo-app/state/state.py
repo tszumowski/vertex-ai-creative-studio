@@ -23,5 +23,3 @@ class AppState:
 
     theme_mode: str
 
-    name: str = "no name"
-    greeting: str = ""

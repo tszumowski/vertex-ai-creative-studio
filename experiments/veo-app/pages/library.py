@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Interpolation"""
+
 import mesop as me
 
 from components.header import header
@@ -21,6 +22,7 @@ from components.page_scaffold import (
 )
 
 from common.metadata import get_latest_videos
+
 
 @me.stateclass
 class PageState:
@@ -64,9 +66,10 @@ def library_content(app_state: me.state):
                     generation_time = m.get("generation_time")
                     timestamp = m.get("timestamp").strftime("%Y-%m-%d %H:%M")
                     reference_image = m.get("reference_image")
+                    auto_enhanced_prompt = m.get("enhanced_prompt")
                     duration = m.get("duration")
                     if duration:
-                        video_length = f"{duration} seconds"
+                        video_length = f"{duration} sec"
                     else:
                         video_length = "Unknown"
                     with me.box(
@@ -74,29 +77,68 @@ def library_content(app_state: me.state):
                             padding=me.Padding.all(10),
                             display="flex",
                             flex_direction="column",
-                            #align_items="center",
+                            # align_items="center",
                             width="50%",
                             gap=10,
                         )
                     ):
-                        me.text(f"Generated Video: {timestamp}", style=me.Style(font_weight="bold"))
+                        me.text(
+                            f"Generated Video: {timestamp}",
+                            style=me.Style(font_weight="bold"),
+                        )
+                        
+                        with me.box(
+                            style=me.Style(
+                                display="flex", flex_direction="row", gap=3,
+                            )
+                        ):
+                            if reference_image:
+                                pill("i2v", "gen")
+                            else:
+                                pill("t2v", "gen")
+                            pill(aspect, "aspect")
+                            pill(video_length, "duration")
+                            pill("24 fps", "fps")
+                            if auto_enhanced_prompt:
+                                me.icon("auto_fix_normal")
+                        
+                        me.text(f'"{prompt}"')
                         if reference_image:
-                            me.text("i2v")
                             reference_image = reference_image.replace(
                                 "gs://",
                                 "https://storage.mtls.cloud.google.com/",
-                            )                            
-                            me.image(src=reference_image, style=me.Style(height=50))
-                        else:
-                            me.text("t2v")
-                        me.text(f"Aspect ratio: {aspect}")
-                        me.text(f"Length: {video_length}")
-                        me.text(f"\"{prompt}\"")
+                            )
+                            me.image(src=reference_image, style=me.Style(height=50, border_radius=5))
                         me.html(f"<a href='{video_url}' target='_blank'>video</a>")
                         me.text(f"Generated in {round(generation_time)} seconds.")
 
-
-
+@me.component
+def pill(label: str, type: str):
+    """Pill display"""
+    
+    background = me.theme_var("on-secondary-fixed-variant")
+    match type:
+        case "aspect":
+            background = me.theme_var("on-secondary-fixed-variant")
+        case "gen":
+            if type == "i2v":
+                background = me.theme_var("on-primary-fixed")
+            else:
+                background = me.theme_var("on-primary-fixed-variant")
+    
+    me.text(
+        label,
+        style=me.Style(
+            background=background,
+            color="white",
+            border_radius="5px",
+            text_align="center",
+            font_size="8pt",
+            font_weight="bold",
+            display="inline-flex",
+            padding=me.Padding.all(5)
+        ),
+    )
 
 
 _BOX_STYLE = me.Style(
