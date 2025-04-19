@@ -1,28 +1,59 @@
 # Experiment: Veo app
 
-This is the initial experiment for the Veo addition to Vertex AI Creative Studio.
+This is the initial experiment for the Veo addition to Vertex AI GenMedia Creative Studio.
 
 ![](./assets/veo-app.png)
 
 
 Current featureset
-* Create a video from a prompt (text to video)
+* Text to Video: Create a video from a prompt.
+* Image to Video: Create a video from an image + prompt.
 * Library: Display the previous stored videos from Firestore index
+* Veo settings/features: Aspect ratio, Duration, Auto prompt enhancer
+
 
 Future featureset
 
-* Image to video
 * Prompt rewriter
 * Additional Veo features: seed, negative prompt, person generation control
 * Advanced Veo features
 * Integration into main GenMedia Creative Studio
 
 
-
-It's built using the Mesop scaffold for Studio style apps.
+This is built using [Mesop](https://mesop-dev.github.io/mesop/) with [scaffold for Studio style apps](https://github.com/ghchinoy/studio-scaffold).
 
 
 ## Prerequisites
+
+You'll need the following
+* This source
+* Google Cloud Storage bucket to store media
+* Firestore database to store the index for the Library
+* To run this locally, you'll also need a python virtual environment set up.
+* Application environment variables set
+
+
+### Source
+
+For this experiment, download the source and then change to this directory
+
+```bash
+git clone [https or ssh url]
+cd experiments/veo-app
+```
+
+### Google Cloud Storage bucket
+
+You'll need a Google Cloud Storage bucket to hold the videos created and images uploaded.
+
+By default, if you don't specify a bucket name in one of the applicaiton environment variables below, it'll be "`YOUR_PROJECT_NAME`-assets".
+
+You can create this like so:
+
+```bash
+export PROJECT_ID=$(gcloud config get project)
+gcloud storage mb -l us-central gs://${PROJECT_ID}-assets
+```
 
 
 ### Cloud Firestore
@@ -38,20 +69,6 @@ Next do the following steps:
 * Create a collection called `genmedia`. This is the default collection name. 
 
 The name of the collection can be changed via environment variables in the `.env` file, by setting the environment variable `GENMEDIA_COLLECTIONS_NAME` to your chosen collection name.
-
-### Google Cloud Storage bucket
-
-You'll need a Google Cloud Storage bucket to hold the videos created and images uploaded.
-
-By default, if you don't specify a bucket name in one of the applicaiton environment variables below, it'll be YOUR_PROJECT_NAME-assets.
-
-You can create this like so:
-
-```bash
-export PROJECT_ID=$(gcloud config get project)
-gcloud storage mb -l us-central gs://${PROJECT_ID}-assets
-```
-
 
 
 
@@ -73,20 +90,26 @@ If you've done this before, you can also use the command `uv sync --upgrade` to 
 
 ### Application Environment variables
 
-Use the included dotenv.template and create a `.env` file with your specific environment variables. See the dotenv.template for the defaults.
+Use the included dotenv.template and create a `.env` file with your specific environment variables. 
 
 Only one environment variable is required:
 
 * `PROJECT_ID` your Google Cloud Project ID, obtained via `gcloud config get project`
 
 
+See the template dotenv.template file for the defaults and what environment variable options are available.
+
 
 
 ## GenMedia Creative Studio - Veo Studio
 
-Start the app to create videos
+Start the app, use the mesop command in your python virutal environment
 
 ```
 mesop main.py
 ```
 
+
+# Disclaimer
+
+This is not an officially supported Google product.

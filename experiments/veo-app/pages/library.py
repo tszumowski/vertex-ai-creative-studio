@@ -103,25 +103,29 @@ def library_content(app_state: me.state):
                                 me.icon("auto_fix_normal")
                         
                         me.text(f'"{prompt}"')
-                        if reference_image:
-                            reference_image = reference_image.replace(
-                                "gs://",
-                                "https://storage.mtls.cloud.google.com/",
-                            )
-                            me.image(src=reference_image, style=me.Style(height=50, border_radius=5))
-                        me.html(f"<a href='{video_url}' target='_blank'>video</a>")
+                        with me.box(style=me.Style(gap=3, display="flex", flex_basis="row")):
+                            me.video(src=video_url, style=me.Style(height=150, border_radius=5))
+                            if reference_image:
+                                reference_image = reference_image.replace(
+                                    "gs://",
+                                    "https://storage.mtls.cloud.google.com/",
+                                )
+                                me.image(src=reference_image, style=me.Style(height=50, border_radius=5))
+                        #me.html(f"<a href='{video_url}' target='_blank'>video</a>")
                         me.text(f"Generated in {round(generation_time)} seconds.")
+                        me.divider()
+                        
 
 @me.component
-def pill(label: str, type: str):
+def pill(label: str, pill_type: str):
     """Pill display"""
     
     background = me.theme_var("on-secondary-fixed-variant")
-    match type:
+    match pill_type:
         case "aspect":
             background = me.theme_var("on-secondary-fixed-variant")
         case "gen":
-            if type == "i2v":
+            if pill_type == "i2v":
                 background = me.theme_var("on-primary-fixed")
             else:
                 background = me.theme_var("on-primary-fixed-variant")

@@ -1,18 +1,16 @@
-#### Gemini
+#### App
 # PROJECT_ID is required, Google Cloud Project
 PROJECT_ID=
 # LOCATION defaults to us-central1
 #LOCATION=us-central1 
-# MODEL_ID defaults to gemini-1.5-flash
+# MODEL_ID defaults to gemini-2.0-flash
 #MODEL_ID= 
+# GENMEDIA_BUCKET defaults to: {PROJECT_ID}-assets
+#GENMEDIA_BUCKET=
 
 #### Veo
 # VEO_PROJECT_ID defaults to PROJECT_ID if not present
 #VEO_PROJECT_ID=
-# VIDEO_BUCKET defaults to: {PROJECT_ID}-assets/videos
-#VIDEO_BUCKET=
-# IMAGE_BUCKET defaults to: {PROJECT_ID}-assets/images
-#IMAGE_BUCKET=
 # VEO_MODEL defaults to veo-2.0-generate-001 if not present
 #VEO_MODEL_ID=
 # VEO_EXP_MODEL_ID defaults to veo-2.0-generate-exp if not present
