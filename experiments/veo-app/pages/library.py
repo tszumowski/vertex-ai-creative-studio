@@ -63,6 +63,7 @@ def library_content(app_state: me.state):
                     prompt = m.get("prompt")
                     generation_time = m.get("generation_time")
                     timestamp = m.get("timestamp").strftime("%Y-%m-%d %H:%M")
+                    reference_image = m.get("reference_image")
                     duration = m.get("duration")
                     if duration:
                         video_length = f"{duration} seconds"
@@ -79,6 +80,15 @@ def library_content(app_state: me.state):
                         )
                     ):
                         me.text(f"Generated Video: {timestamp}", style=me.Style(font_weight="bold"))
+                        if reference_image:
+                            me.text("i2v")
+                            reference_image = reference_image.replace(
+                                "gs://",
+                                "https://storage.mtls.cloud.google.com/",
+                            )                            
+                            me.image(src=reference_image, style=me.Style(height=50))
+                        else:
+                            me.text("t2v")
                         me.text(f"Aspect ratio: {aspect}")
                         me.text(f"Length: {video_length}")
                         me.text(f"\"{prompt}\"")
