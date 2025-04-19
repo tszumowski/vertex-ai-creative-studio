@@ -37,7 +37,7 @@ Next do the following steps:
 
 * Create a collection called `genmedia`. This is the default collection name. 
 
-The name of the collections can be changed via environment variables in the `.env` file, by setting the environment variable `GENMEDIA_COLLECTIONS_NAME` to your chosen collection name.
+The name of the collection can be changed via environment variables in the `.env` file, by setting the environment variable `GENMEDIA_COLLECTIONS_NAME` to your chosen collection name.
 
 
 
