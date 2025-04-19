@@ -56,7 +56,7 @@ google-cloud-core==2.4.3
     # via google-cloud-logging
 google-cloud-logging==3.12.0
     # via babel-web (pyproject.toml)
-googleapis-common-protos==1.69.2
+googleapis-common-protos==1.70.0
     # via
     #   google-api-core
     #   google-cloud-audit-log
