@@ -118,7 +118,7 @@ uv run main.py
 Use Cloud Shell and follow the tutorial instructions.
 
 
-  [![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/GoogleCloudPlatform/vertex-ai-creative-studio.git&cloudshell_git_branch=veo&cloudshell_workspace=experiments/veo-app)
+  [![Open in Cloud Shell](https://gstatic.com/cloudssh/images/open-btn.svg)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https://github.com/GoogleCloudPlatform/vertex-ai-creative-studio.git&cloudshell_git_branch=veo&cloudshell_workspace=experiments/veo-app&cloudshell_tutorial=tutorial.md)
 
 
 ### Developing
