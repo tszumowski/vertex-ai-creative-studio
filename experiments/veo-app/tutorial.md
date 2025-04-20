@@ -37,17 +37,19 @@ gcloud firestore databases create --database="(default)" --location=nam5
 
 ### Google Cloud Storage bucket
 
-For the defaults, you should have a bucket named $PROJECT_NAME-assets, and you can check by doing this:
+For the defaults, you should have a bucket named <walkthrough-project-name/>-assets, and you can check by doing this:
 
 ```bash
-gcloud storage ls gs://${PROJECT_ID}-assets
+gcloud storage ls gs://<walkthrough-project-name/>-assets
 ```
 
 If you have one, great! If not, create one:
 
 ```bash
-gcloud storage buckets create -l us-central1 gs://${PROJECT_ID}-assets
+gcloud storage buckets create -l us-central1 gs://<walkthrough-project-name/>-assets
 ```
+
+Notre
 
 ### uv
 
