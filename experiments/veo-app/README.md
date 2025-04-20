@@ -38,8 +38,10 @@ You'll need the following
 For this experiment, download the source and then change to this directory
 
 ```bash
-git clone [https or ssh url]
-cd experiments/veo-app
+git clone https://github.com/GoogleCloudPlatform/vertex-ai-creative-studio.git
+cd vertex-ai-creative-studio/
+git checkout veo
+cd experiments/veo-app/
 ```
 
 ### Google Cloud Storage bucket
@@ -117,7 +119,7 @@ uv run main.py
 Using the mesop app in a virtual environment provides the best debugging and building experience as it supports hot reload.
 
 ```bash
-. .venv/bin/activate
+source .venv/bin/activate
 ```
 
 Start the app, use the mesop command in your python virutal environment

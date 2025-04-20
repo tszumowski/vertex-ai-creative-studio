@@ -106,18 +106,6 @@ def library_page():
     library_content(me.state(AppState))
 
 
-# @me.page(
-#     path="/gemini",
-#     title="Scaffold - Gemini",
-#     on_load=on_load,
-# )
-# def gemini_page():
-#     """Gemini 2.0 Flash Page"""
-#     state = me.state(AppState)
-#     with page_scaffold():  # pylint: disable=not-context-manager
-#         gemini_page_content(state)
-
-
 # FastAPI server with Mesop
 app = FastAPI()
 router = APIRouter()
