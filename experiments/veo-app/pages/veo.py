@@ -19,12 +19,12 @@ import requests
 
 from common.metadata import add_video_metadata
 from common.storage import store_to_gcs
+from components.dialog import dialog, dialog_actions
 from components.header import header
 from components.page_scaffold import (
     page_frame,
     page_scaffold,
 )
-from components.dialog import dialog, dialog_actions
 from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import image_to_video, text_to_video
@@ -65,7 +65,6 @@ class PageState:
     error_message: str = ""
     result_video: str
     timing: str
-    
 
 
 def veo_content(app_state: me.state):
@@ -127,7 +126,11 @@ def veo_content(app_state: me.state):
                             value=f"{state.video_length}",
                             on_selection_change=on_selection_change_length,
                         )
-                        me.checkbox(label="auto-enhance prompt", checked=state.auto_enhance_prompt, on_change=on_change_auto_enhance_prompt)
+                        me.checkbox(
+                            label="auto-enhance prompt",
+                            checked=state.auto_enhance_prompt,
+                            on_change=on_change_auto_enhance_prompt,
+                        )
 
                 # Uploaded image
                 with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
@@ -179,17 +182,22 @@ def veo_content(app_state: me.state):
                             "gs://",
                             "https://storage.mtls.cloud.google.com/",
                         )
-                        print(f"video_url: {video_url}" )
+                        print(f"video_url: {video_url}")
                         me.video(src=video_url, style=me.Style(border_radius=6))
                         me.text(state.timing)
 
     with dialog(is_open=state.show_error_dialog):  # pylint: disable=not-context-manager
         # Content within the dialog box
-        me.text("Generation Error", type="headline-6", style=me.Style(color=me.theme_var("error")))
+        me.text(
+            "Generation Error",
+            type="headline-6",
+            style=me.Style(color=me.theme_var("error")),
+        )
         me.text(state.error_message, style=me.Style(margin=me.Margin(top=16)))
         # Use the dialog_actions component for the button
         with dialog_actions():  # pylint: disable=not-context-manager
             me.button("Close", on_click=on_close_error_dialog, type="flat")
+
 
 def on_change_auto_enhance_prompt(e: me.CheckboxChangeEvent):
     """Toggle auto-enhance prompt"""
@@ -258,10 +266,10 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
     """Veo generate request handler"""
     state = me.state(PageState)
     state.is_loading = True
-    state.show_error_dialog = False # Reset error state before starting
+    state.show_error_dialog = False  # Reset error state before starting
     state.error_message = ""
-    state.result_video = "" # Clear previous result
-    state.timing = "" # Clear previous timing
+    state.result_video = ""  # Clear previous result
+    state.timing = ""  # Clear previous timing
     yield
 
     print(f"Lights, camera, action!:\n{state.veo_prompt_input}")
@@ -304,7 +312,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
             )
 
         print(f"Operation result: {op}")
-        
+
         # Check for explicit errors in response
         if op.get("done") and op.get("error"):
             current_error_message = op["error"].get("message", "Unknown API error")
@@ -315,32 +323,51 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
             response_data = op["response"]
             print(f"Response: {response_data}")
             print_keys(op["response"])
-            
-            # Extract GCS URI from different possible locations
-            if "generatedSamples" in response_data and response_data["generatedSamples"]:
-                print(f"Generated Samples: {response_data["generatedSamples"]}")
-                gcs_uri = response_data["generatedSamples"][0].get("video", {}).get("uri", "")
-            elif "videos" in response_data and response_data["videos"]:
-                print(f"Videos: {response_data["videos"]}")
-                gcs_uri = response_data["videos"][0].get("gcsUri", "")
 
-            if gcs_uri:
-                file_name = gcs_uri.split("/")[-1]
-                print("Video generated - use the following to copy locally")
-                print(f"gsutil cp {gcs_uri} {file_name}")
-                state.result_video = gcs_uri
+            if response_data.get("raiMediaFilteredCount", 0) > 0 and response_data.get(
+                "raiMediaFilteredReasons"
+            ):
+                # Extract the first reason provided
+                filter_reason = response_data["raiMediaFilteredReasons"][0]
+                current_error_message = f"Content Filtered: {filter_reason}"
+                print(f"Filtering Detected: {current_error_message}")
+                gcs_uri = ""  # No GCS URI if content was filtered
+
             else:
-                # Success reported, but no video URI found - treat as an error/unexpected state
-                current_error_message = "API reported success but no video URI was found in the response."
-                print(f"Error: {current_error_message}")
-                state.result_video = "" # Ensure no video is shown
-                
+                # Extract GCS URI from different possible locations
+                if (
+                    "generatedSamples" in response_data
+                    and response_data["generatedSamples"]
+                ):
+                    print(f"Generated Samples: {response_data["generatedSamples"]}")
+                    gcs_uri = (
+                        response_data["generatedSamples"][0]
+                        .get("video", {})
+                        .get("uri", "")
+                    )
+                elif "videos" in response_data and response_data["videos"]:
+                    print(f"Videos: {response_data["videos"]}")
+                    gcs_uri = response_data["videos"][0].get("gcsUri", "")
+
+                if gcs_uri:
+                    file_name = gcs_uri.split("/")[-1]
+                    print("Video generated - use the following to copy locally")
+                    print(f"gsutil cp {gcs_uri} {file_name}")
+                    state.result_video = gcs_uri
+                else:
+                    # Success reported, but no video URI found - treat as an error/unexpected state
+                    current_error_message = "API reported success but no video URI was found in the response."
+                    print(f"Error: {current_error_message}")
+                    state.result_video = ""  # Ensure no video is shown
+
         else:
             # Handle cases where 'done' is false or response structure is unexpected
-            current_error_message = "Unexpected API response structure or operation not done."
+            current_error_message = (
+                "Unexpected API response structure or operation not done."
+            )
             print(f"Error: {current_error_message}")
             state.result_video = ""
-            
+
     # Catch specific exceptions you anticipate
     except ValueError as err:
         print(f"ValueError caught: {err}")
@@ -352,20 +379,20 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
     except Exception as err:
         print(f"Generic Exception caught: {type(err).__name__}: {err}")
         current_error_message = f"An unexpected error occurred: {err}"
-    
+
     finally:
         end_time = time.time()  # Record the ending time
         execution_time = end_time - start_time  # Calculate the elapsed time
         print(f"Execution time: {execution_time} seconds")  # Print the execution time
         state.timing = f"Generation time: {round(execution_time)} seconds"
-        
+
         #  If an error occurred, update the state to show the dialog
         if current_error_message:
             state.error_message = current_error_message
             state.show_error_dialog = True
             # Ensure no result video is displayed on error
             state.result_video = ""
-        
+
         try:
             add_video_metadata(
                 gcs_uri,
@@ -382,9 +409,9 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
             # Handle potential errors during metadata storage itself
             print(f"CRITICAL: Failed to store metadata: {meta_err}")
             # Optionally, display another error or log this critical failure
-            if not state.show_error_dialog: # Avoid overwriting primary error
-                 state.error_message = f"Failed to store video metadata: {meta_err}"
-                 state.show_error_dialog = True
+            if not state.show_error_dialog:  # Avoid overwriting primary error
+                state.error_message = f"Failed to store video metadata: {meta_err}"
+                state.show_error_dialog = True
 
     state.is_loading = False
     yield
@@ -492,5 +519,4 @@ def on_close_error_dialog(e: me.ClickEvent):
     """Handler to close the error dialog."""
     state = me.state(PageState)
     state.show_error_dialog = False
-    yield # Update UI to hide dialog
-
+    yield  # Update UI to hide dialog
