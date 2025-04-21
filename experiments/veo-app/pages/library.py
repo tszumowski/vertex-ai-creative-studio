@@ -67,6 +67,7 @@ def library_content(app_state: me.state):
                     reference_image = m.get("reference_image")
                     auto_enhanced_prompt = m.get("enhanced_prompt")
                     duration = m.get("duration")
+                    error_message = m.get("error_message")
                     if duration:
                         video_length = f"{duration} sec"
                     else:
@@ -107,10 +108,20 @@ def library_content(app_state: me.state):
                         with me.box(
                             style=me.Style(gap=3, display="flex", flex_basis="row")
                         ):
-                            me.video(
-                                src=video_url,
-                                style=me.Style(height=150, border_radius=6),
-                            )
+                            if error_message:
+                                me.text(
+                                    f"Error: {error_message}",  
+                                    style=me.Style(
+                                        width=300,
+                                        font_style="italic",
+                                        font_size="10pt",
+                                    ),
+                                )
+                            else:
+                                me.video(
+                                    src=video_url,
+                                    style=me.Style(height=150, border_radius=6),
+                                )
                             if reference_image:
                                 reference_image = reference_image.replace(
                                     "gs://",
@@ -121,6 +132,7 @@ def library_content(app_state: me.state):
                                     style=me.Style(height=75, border_radius=6),
                                 )
                         # me.html(f"<a href='{video_url}' target='_blank'>video</a>")
+                        
                         me.text(f"Generated in {round(generation_time)} seconds.")
                         me.divider()
 
