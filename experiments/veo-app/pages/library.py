@@ -110,11 +110,21 @@ def library_content(app_state: me.state):
                         ):
                             if error_message:
                                 me.text(
-                                    f"Error: {error_message}",  
+                                    f"Error: {error_message}",
                                     style=me.Style(
                                         width=300,
                                         font_style="italic",
                                         font_size="10pt",
+                                        margin=me.Margin.all(3),
+                                        padding=me.Padding.all(6),
+                                        border=me.Border.all(
+                                            me.BorderSide(
+                                                style="solid",
+                                                width=1,
+                                                color=me.theme_var("error")
+                                            )
+                                        ),
+                                        border_radius=5,
                                     ),
                                 )
                             else:
@@ -132,7 +142,7 @@ def library_content(app_state: me.state):
                                     style=me.Style(height=75, border_radius=6),
                                 )
                         # me.html(f"<a href='{video_url}' target='_blank'>video</a>")
-                        
+
                         me.text(f"Generated in {round(generation_time)} seconds.")
                         me.divider()
 
