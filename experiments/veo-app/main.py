@@ -98,7 +98,7 @@ def imagen_page():
 
 @me.page(
     path="/library",
-    title="GenMedia Creative Studio - Imagen",
+    title="GenMedia Creative Studio - Library",
     on_load=on_load,
 )
 def library_page():
