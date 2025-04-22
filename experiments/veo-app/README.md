@@ -2,7 +2,7 @@
 
 This is the initial experiment for the Veo 2 addition to Vertex AI GenMedia Creative Studio.
 
-![](./assets/veo-app.png)
+![Veo 2 Experimental App UI](./assets/veo-app.png)
 
 
 Current featureset
