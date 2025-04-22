@@ -10,7 +10,7 @@ We'd love to hear your feedback on these!
 
 A stand-alone application for generative video creation with Veo!
 
-![](assets/veo-app.png)
+![veo 2 experimental app ui](assets/veo-app.png)
 
 ## Creative Podcast Assistant
 
@@ -21,11 +21,11 @@ A stand-alone application for generative video creation with Veo!
 
 A stand-alone application to rate Model Garden image generation models, including Imagen 2, 3 and others!
 
-![](assets/arena.png)
+![arena experimental app ui](assets/arena.png)
 
 
 ## Babel - Chirp 3: HD Voices
 
 A stand-alone service + web application that generates voices using Google Cloud's Chirp 3: HD Voices.
 
-![](assets/babel.png)
+![babel experimental app ui](assets/babel.png)
