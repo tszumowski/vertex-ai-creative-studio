@@ -1,4 +1,4 @@
-# GenMedia Creative Studio: Veo module Tutorial
+# GenMedia Creative Studio: Veo 2 module Tutorial
 
 ## Welcome!
 

@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Welcome page"""
 import mesop as me
 
 from components.header import header
@@ -64,7 +65,7 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                         gap=15,
                     ),
                 ):
-                    media_tile("Veo", "movie", "/veo")
+                    media_tile("Veo 2", "movie", "/veo")
                     media_tile("Library", "perm_media", "/library")
                     media_tile("Settings", "settings", "/config")
 
