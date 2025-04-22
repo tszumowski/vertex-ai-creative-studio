@@ -102,7 +102,7 @@ mesop==1.0.1
     # via babel-web (pyproject.toml)
 msgpack==1.1.0
     # via mesop
-mypy-extensions==1.0.0
+mypy-extensions==1.1.0
     # via typing-inspect
 numpy==2.2.5
     # via
