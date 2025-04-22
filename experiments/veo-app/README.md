@@ -1,6 +1,6 @@
-# Experiment: Veo app
+# Experiment: Veo 2 app
 
-This is the initial experiment for the Veo addition to Vertex AI GenMedia Creative Studio.
+This is the initial experiment for the Veo 2 addition to Vertex AI GenMedia Creative Studio.
 
 ![](./assets/veo-app.png)
 
@@ -9,14 +9,14 @@ Current featureset
 * Text to Video: Create a video from a prompt.
 * Image to Video: Create a video from an image + prompt.
 * Library: Display the previous stored videos from Firestore index
-* Veo settings/features: Aspect ratio, Duration, Auto prompt enhancer
+* Veo 2 settings/features: Aspect ratio, Duration, Auto prompt enhancer
 
 
 Future featureset
 
 * Prompt rewriter
-* Additional Veo features: seed, negative prompt, person generation control
-* Advanced Veo features
+* Additional Veo 2 features: seed, negative prompt, person generation control
+* Advanced Veo 2 features
 * Integration into main GenMedia Creative Studio
 
 
@@ -101,7 +101,7 @@ See the template dotenv.template file for the defaults and what environment vari
 
 
 
-## GenMedia Creative Studio - Veo Studio
+## GenMedia Creative Studio - Veo 2 Studio
 
 
 ### Running

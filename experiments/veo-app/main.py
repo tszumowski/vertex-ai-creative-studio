@@ -46,7 +46,7 @@ def on_load(e: me.LoadEvent):  # pylint: disable=unused-argument
 
 @me.page(
     path="/",
-    title="GenMedia Creative Studio - Veo",
+    title="GenMedia Creative Studio - Veo 2",
     on_load=on_load,
 )
 def home_page():
@@ -58,7 +58,7 @@ def home_page():
 
 @me.page(
     path="/veo",
-    title="Veo - GenMedia Creative Studio",
+    title="Veo 2 - GenMedia Creative Studio",
     on_load=on_load,
 )
 def veo_page():

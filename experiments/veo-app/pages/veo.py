@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+""" Veo 2 mesop ui page"""
 import time
 
 import mesop as me
@@ -68,12 +68,12 @@ class PageState:
 
 
 def veo_content(app_state: me.state):
-    """Veo Mesop Page"""
+    """Veo 2 Mesop Page"""
     state = me.state(PageState)
 
     with page_scaffold():  # pylint: disable=not-context-manager
         with page_frame():  # pylint: disable=not-context-manager
-            header("Veo", "movie")
+            header("Veo 2", "movie")
 
             # tricolumn
             with me.box(
