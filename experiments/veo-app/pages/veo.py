@@ -16,15 +16,16 @@ import time
 
 import mesop as me
 import requests
-
 from common.metadata import add_video_metadata
 from common.storage import store_to_gcs
+from common.utils import print_keys
 from components.dialog import dialog, dialog_actions
 from components.header import header
 from components.page_scaffold import (
     page_frame,
     page_scaffold,
 )
+
 from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import image_to_video, text_to_video
@@ -404,6 +405,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
                 state.reference_image_gcs,
                 rewrite_prompt,
                 error_message=current_error_message,
+                comment="veo2 default generation",
             )
         except Exception as meta_err:
             # Handle potential errors during metadata storage itself
@@ -503,16 +505,6 @@ def subtle_veo_input():
                     me.icon("clear")
                     me.text("Clear")
 
-
-def print_keys(obj, prefix=""):
-    """Recursively prints keys of a JSON object."""
-    if isinstance(obj, dict):
-        for key in obj:
-            print(prefix + key)
-            print_keys(obj[key], prefix + "  ")  # Recurse with increased indentation
-    elif isinstance(obj, list):
-        for i, item in enumerate(obj):
-            print_keys(item, prefix + f"  [{i}] ")  # indicate list index in prefix
 
 
 def on_close_error_dialog(e: me.ClickEvent):
