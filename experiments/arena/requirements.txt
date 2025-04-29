@@ -22,7 +22,7 @@ firebase-admin==6.7.0
 flask==3.1.0
 fsspec==2025.3.2
 google-api-core==2.24.2
-google-api-python-client==2.167.0
+google-api-python-client==2.169.0
 google-auth==2.39.0
 google-auth-httplib2==0.2.0
 google-cloud-aiplatform==1.89.0
