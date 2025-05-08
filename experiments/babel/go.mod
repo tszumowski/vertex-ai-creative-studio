@@ -2,7 +2,7 @@ module github.com/ghchinoy/babel
 
 go 1.23.2
 
-toolchain go1.24.2
+toolchain go1.24.3
 
 require (
 	cloud.google.com/go/storage v1.50.0
@@ -10,7 +10,7 @@ require (
 	cloud.google.com/go/vertexai v0.13.3
 	github.com/schollz/progressbar/v3 v3.18.0
 	google.golang.org/api v0.230.0
-	google.golang.org/genai v1.1.0
+	google.golang.org/genai v1.3.0
 )
 
 require (
@@ -31,7 +31,7 @@ require (
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
+	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
