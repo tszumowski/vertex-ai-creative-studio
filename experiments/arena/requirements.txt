@@ -6,26 +6,26 @@ alive-progress==3.2.0
 annotated-types==0.7.0
 anyio==4.9.0
 blinker==1.9.0
-cachecontrol==0.14.2
+cachecontrol==0.14.3
 cachetools==5.5.2
 certifi==2025.1.31
 cffi==1.17.1 ; platform_python_implementation != 'PyPy'
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
 click==8.1.8
 colorama==0.4.6 ; sys_platform == 'win32'
 cramjam==2.10.0
-cryptography==44.0.2
+cryptography==44.0.3
 deepdiff==8.4.2
 docstring-parser==0.16
 fastparquet==2024.11.0
-firebase-admin==6.7.0
+firebase-admin==6.8.0
 flask==3.1.0
 fsspec==2025.3.2
 google-api-core==2.24.2
-google-api-python-client==2.167.0
+google-api-python-client==2.169.0
 google-auth==2.39.0
 google-auth-httplib2==0.2.0
-google-cloud-aiplatform==1.89.0
+google-cloud-aiplatform==1.91.0
 google-cloud-bigquery==3.31.0
 google-cloud-core==2.4.3
 google-cloud-firestore==2.20.2
@@ -42,8 +42,8 @@ grpc-interceptor==0.15.4
 grpcio==1.71.0
 grpcio-status==1.71.0
 gunicorn==23.0.0
-h11==0.14.0
-httpcore==1.0.8
+h11==0.16.0
+httpcore==1.0.9
 httplib2==0.22.0
 httpx==0.28.1
 idna==3.10
