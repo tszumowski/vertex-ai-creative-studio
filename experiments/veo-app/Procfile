@@ -1,1 +1,1 @@
-web: gunicorn --bind :8080 main:me
+web: gunicorn --bind :8080 --workers 4 --timeout 120 main:me

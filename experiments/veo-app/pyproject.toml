@@ -9,6 +9,7 @@ dependencies = [
     "firebase-admin>=6.6.0",
     "google-cloud-aiplatform>=1.79.0",
     "google-genai>=0.8.0",
+    "gunicorn>=23.0.0",
     "mediapy>=1.2.2",
     "mesop>=0.14.1",
     "numpy>=2.2.2",
