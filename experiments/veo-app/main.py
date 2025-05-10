@@ -16,9 +16,10 @@
 import os
 
 import mesop as me
-from components.page_scaffold import page_scaffold
-from fastapi import APIRouter, FastAPI
+from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.wsgi import WSGIMiddleware
+
+from components.page_scaffold import page_scaffold
 from pages.config import config_page_contents
 from pages.home import home_page_content
 from pages.imagen import imagen_content
@@ -123,8 +124,13 @@ app.include_router(router)
 
 
 @app.get("/hello")
-def hello():
-    return "world"
+def hello(request: Request):
+    """Hello endpoint that returns the user email from the headers."""
+    user_email = request.headers.get("X-Goog-Authenticated-User-Email")
+    if user_email:
+        return {"message": f"Hello, {user_email}!"}
+    return {"message": "Hello, anonymous user!"}
+
 
 
 app.mount(
