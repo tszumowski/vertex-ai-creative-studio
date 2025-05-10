@@ -29,7 +29,7 @@ config = Default()
 db = FirebaseClient(database_id=config.GENMEDIA_FIREBASE_DB).get_client()
 
 
-def add_video_metadata(gcsuri: str, prompt: str, aspect_ratio: str, model: str, generation_time: float, duration: int, reference_image: str, rewrite_prompt: bool, error_message: str, comment: str):
+def add_video_metadata(gcsuri: str, prompt: str, aspect_ratio: str, model: str, generation_time: float, duration: int, reference_image: str, rewrite_prompt: bool, error_message: str, comment: str, last_reference_image: str):
     """Add Video metadata to Firestore persistence"""
 
     current_datetime = datetime.datetime.now()
@@ -45,6 +45,7 @@ def add_video_metadata(gcsuri: str, prompt: str, aspect_ratio: str, model: str, 
             "duration": duration,
             "generation_time": generation_time,
             "reference_image": reference_image,
+            "last_reference_image": last_reference_image,
             "enhanced_prompt": rewrite_prompt,
             "mime_type": "video/mp4",
             "error_message": error_message,
@@ -72,3 +73,13 @@ def get_latest_videos(limit: int = 10):
     except Exception as e:
         print(f"Error fetching media: {e}")
         return []
+
+
+def get_total_media_count():
+    """get count of all media in firestore"""
+    media_ref = (
+            db.collection(config.GENMEDIA_COLLECTION_NAME)
+            .order_by("timestamp", direction=firestore.Query.DESCENDING)
+        )
+    count = len([doc.to_dict() for doc in media_ref.stream()])
+    return count

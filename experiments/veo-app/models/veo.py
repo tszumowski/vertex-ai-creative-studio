@@ -20,23 +20,24 @@ import google.auth.transport.requests
 import requests
 from dotenv import load_dotenv
 
-from models.model_setup import VeoModelSetup
-
 from config.default import Default
-
+from models.model_setup import VeoModelSetup
 
 config = Default()
 
 
 load_dotenv(override=True)
 
-#video_model, prediction_endpoint, fetch_endpoint = VeoModelSetup.init()
+# video_model, prediction_endpoint, fetch_endpoint = VeoModelSetup.init()
 t2v_video_model = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{config.VEO_PROJECT_ID}/locations/us-central1/publishers/google/models/{config.VEO_MODEL_ID}"
 t2v_prediction_endpoint = f"{t2v_video_model}:predictLongRunning"
 fetch_endpoint = f"{t2v_video_model}:fetchPredictOperation"
 
 i2v_video_model = f"https://us-central1-aiplatform.googleapis.com/v1beta1/projects/{config.VEO_PROJECT_ID}/locations/us-central1/publishers/google/models/{config.VEO_EXP_MODEL_ID}"
 i2v_prediction_endpoint = f"{i2v_video_model}:predictLongRunning"
+
+exp_video_model = f"https://us-central1-aiplatform.googleapis.com/v1/projects/{config.VEO_PROJECT_ID}/locations/us-central1/publishers/google/models/{config.VEO_EXP_MODEL_ID}"
+exp_prediction_endpoint = f"{exp_video_model}:predictLongRunning"
 
 
 def send_request_to_google_api(api_endpoint, data=None):
@@ -76,8 +77,9 @@ def compose_videogen_request(
     sample_count,
     enable_prompt_rewriting,
     duration_seconds,
+    last_image_uri,
 ):
-    """ Create a JSON Request for Veo """
+    """Create a JSON Request for Veo"""
     enhance_prompt = "no"
     if enable_prompt_rewriting:
         enhance_prompt = "yes"
@@ -85,6 +87,8 @@ def compose_videogen_request(
     instance = {"prompt": prompt}
     if image_uri:
         instance["image"] = {"gcsUri": image_uri, "mimeType": "png"}
+    if last_image_uri:
+        instance["lastFrame"] = {"gcsUri": last_image_uri, "mimeType": "png"}
     request = {
         "instances": [instance],
         "parameters": {
@@ -100,10 +104,20 @@ def compose_videogen_request(
     return request
 
 
-def text_to_video(prompt, seed, aspect_ratio, sample_count, output_gcs, enable_pr, duration_seconds):
+def text_to_video(
+    prompt, seed, aspect_ratio, sample_count, output_gcs, enable_pr, duration_seconds
+):
     """Text to video"""
     req = compose_videogen_request(
-        prompt, None, output_gcs, seed, aspect_ratio, sample_count, enable_pr, duration_seconds
+        prompt,
+        None,
+        output_gcs,
+        seed,
+        aspect_ratio,
+        sample_count,
+        enable_pr,
+        duration_seconds,
+        None,
     )
     resp = send_request_to_google_api(t2v_prediction_endpoint, req)
     print(resp)
@@ -111,19 +125,63 @@ def text_to_video(prompt, seed, aspect_ratio, sample_count, output_gcs, enable_p
 
 
 def image_to_video(
-    prompt, image_gcs, seed, aspect_ratio, sample_count, output_gcs, enable_pr, duration_seconds
+    prompt,
+    image_gcs,
+    seed,
+    aspect_ratio,
+    sample_count,
+    output_gcs,
+    enable_pr,
+    duration_seconds,
 ):
     """Image to video"""
     req = compose_videogen_request(
-        prompt, image_gcs, output_gcs, seed, aspect_ratio, sample_count, enable_pr, duration_seconds
+        prompt,
+        image_gcs,
+        output_gcs,
+        seed,
+        aspect_ratio,
+        sample_count,
+        enable_pr,
+        duration_seconds,
+        None,
     )
     resp = send_request_to_google_api(t2v_prediction_endpoint, req)
     print(resp)
     return fetch_operation(resp["name"])
 
 
+def images_to_video(
+    prompt,
+    first_image_gcs,
+    last_image_gcs,
+    seed,
+    aspect_ratio,
+    sample_count,
+    output_gcs,
+    enable_pr,
+    duration_seconds,
+):
+    """Images to video"""
+    req = compose_videogen_request(
+        prompt,
+        first_image_gcs,
+        output_gcs,
+        seed,
+        aspect_ratio,
+        sample_count,
+        enable_pr,
+        duration_seconds,
+        last_image_gcs,
+    )
+    print(f"Request: {req}")
+    resp = send_request_to_google_api(exp_prediction_endpoint, req)
+    print(resp)
+    return fetch_operation(resp["name"])
+
+
 def fetch_operation(lro_name):
-    """ Long Running Operation fetch """
+    """Long Running Operation fetch"""
     request = {"operationName": lro_name}
     # The generation usually takes 2 minutes. Loop 30 times, around 5 minutes.
     for i in range(30):
@@ -134,7 +192,7 @@ def fetch_operation(lro_name):
 
 
 def show_video(op):
-    """ show video """
+    """show video"""
     print(op)
     if op["response"]:
         print(f"Done: {op['response']['done']}")
