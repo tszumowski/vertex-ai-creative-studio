@@ -57,6 +57,7 @@ _BOX_STYLE_CENTER_DISTRIBUTED = me.Style(
     flex_direction="column",
     align_items="center",
     justify_content="space-between",
+    width="100%",
 )
 
 _BOX_STYLE_CENTER_DISTRIBUTED_MARGIN = me.Style(
