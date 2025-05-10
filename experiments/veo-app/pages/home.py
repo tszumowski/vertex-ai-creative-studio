@@ -91,12 +91,21 @@ def media_tile(label: str, icon: str, route: str):
         on_click=go_to_page,
         key=route,
     ):
-        with me.content_button(
-            #on_click=go_to_page,
-            #key=route,
-            style=me.Style(font_size="18px"),
+        # with me.content_button(
+        #     #on_click=go_to_page,
+        #     #key=route,
+        #     style=me.Style(font_size="18px"),
+        # ):
+        with me.box(
+            style=me.Style(
+                display="flex",
+                flex_direction="column",
+                align_items="center",
+                font_size="18px",
+                gap=5,
+            ),
         ):
             me.icon(
-                icon, style=me.Style(font_size="48pt", width="100px", height="60px")
+                icon, style=me.Style(font_size="48pt", width="70px", height="60px", color=me.theme_var("on-surface"))
             )
-            me.text(label)
+            me.text(label, style=me.Style(font_weight="medium"))
