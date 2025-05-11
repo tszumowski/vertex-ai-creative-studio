@@ -26,7 +26,7 @@ cffi==1.17.1 ; platform_python_implementation != 'PyPy'
     # via cryptography
 charset-normalizer==3.4.2
     # via requests
-click==8.1.8
+click==8.2.0
     # via
     #   flask
     #   uvicorn
@@ -54,7 +54,7 @@ firebase-admin==6.8.0
     # via veo-app
 flask==3.1.0
     # via mesop
-fonttools==4.57.0
+fonttools==4.58.0
     # via matplotlib
 google-api-core==2.24.2
     # via
