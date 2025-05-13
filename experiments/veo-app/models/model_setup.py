@@ -42,7 +42,7 @@ class VeoModelSetup:
         # self._prediction_endpoint = f"{self._video_model}:predictLongRunning"
         # self._fetch_endpoint = f"{self._video_model}:fetchPredictOperation"
 
-        #return video_model, prediction_endpoint, fetch_endpoint
+        return model_id
 
 
 class GeminiModelSetup:

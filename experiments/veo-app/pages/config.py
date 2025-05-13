@@ -30,6 +30,8 @@ from config.default import Default
 
 def get_config_table():
     """ Construct a table of the Defaults """
+
+    app_state = me.state(AppState)
     df = pd.DataFrame(
         data={
             "Config": [
@@ -44,6 +46,7 @@ def get_config_table():
                 #"Video Bucket",
                 #"Image Bucket",
                 "GenMedia Collection",
+                #"User Email"
             ],
             "Value": [
                 Default.INIT_VERTEX,
@@ -57,6 +60,7 @@ def get_config_table():
                 #f"gs://{Default.VIDEO_BUCKET}",
                 #f"gs://{Default.IMAGE_BUCKET}",
                 f"{Default.GENMEDIA_FIREBASE_DB} / {Default.GENMEDIA_COLLECTION_NAME}",
+                #app_state.user_email,
             ]
         }
     )

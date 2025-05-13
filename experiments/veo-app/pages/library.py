@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Interpolation"""
+"""Library"""
+
+from dataclasses import dataclass, field
+from typing import Callable, List, Optional
 
 import mesop as me
 
 from common.metadata import get_latest_videos
+from common.metadata import get_total_media_count as get_total_videos_count
 from components.header import header
 from components.page_scaffold import (
     page_frame,
@@ -24,37 +28,64 @@ from components.page_scaffold import (
 
 
 @me.stateclass
+@dataclass
 class PageState:
     """Local Page State"""
 
     is_loading: bool = False
-
     music_prompt_input: str = ""
     music_prompt_placeholder: str = ""
     music_prompt_textarea_key: int = 0
     music_upload_uri: str = ""
+    current_page: int = 1  # Add current page to state
+    videos_per_page: int = 9
+    total_videos: int = 0 # Add total videos count
+    videos: List[dict] = field(default_factory=list) # store the videos.
+    key: int = 0 # Add a key for the list
 
+
+def get_videos_for_page(page: int, videos_per_page: int) -> List[dict]:
+    """Helper function to get videos for a specific page."""
+    start = (page - 1) * videos_per_page
+    # In a real application, you'd adjust your Firestore query to use offset/limit
+    #  to get the correct page of results.  This simplified version gets all
+    # and then returns a slice.
+    all_videos = get_latest_videos(limit=1000) # set a limit higher than total number of videos.
+    return all_videos[start:start + videos_per_page]
+    #
+    #  Important Firestore note:  Firestore does NOT have a built-in offset.
+    #  For large datasets, using offset can be very inefficient.  The best
+    #  practice for pagination with Firestore is to use "startAfter"
+    #  with a document ID or field value. 
 
 def library_content(app_state: me.state):
     """Library Mesop Page"""
-
     pagestate = me.state(PageState)
+
+    if not pagestate.videos and pagestate.total_videos == 0:
+        pagestate.total_videos = get_total_videos_count()
+
+    if not pagestate.videos:
+        pagestate.videos = get_videos_for_page(pagestate.current_page, pagestate.videos_per_page)
+
+    total_pages = (pagestate.total_videos + pagestate.videos_per_page - 1) // pagestate.videos_per_page # calculate total pages
 
     with page_scaffold():  # pylint: disable=not-context-manager
         with page_frame():  # pylint: disable=not-context-manager
             header("Library", "perm_media")
 
-            media = get_latest_videos()
-
             with me.box(
+                key=str(pagestate.key),
                 style=me.Style(
-                    display="flex",
-                    flex_direction="column",
+                    #display="flex",
+                    #flex_direction="column",
+                    display="grid",
+                    grid_template_columns="repeat(3, 1fr)",
                     align_items="center",
                     width="90hv",
                 )
             ):
-                for m in media:
+                for m in pagestate.videos:
                     aspect = m.get("aspect")
                     gcsuri = m.get("gcsuri")
                     video_url = gcsuri.replace(
@@ -65,6 +96,7 @@ def library_content(app_state: me.state):
                     generation_time = m.get("generation_time")
                     timestamp = m.get("timestamp").strftime("%Y-%m-%d %H:%M")
                     reference_image = m.get("reference_image")
+                    last_reference_image = m.get("last_reference_image")
                     auto_enhanced_prompt = m.get("enhanced_prompt")
                     duration = m.get("duration")
                     error_message = m.get("error_message")
@@ -104,7 +136,7 @@ def library_content(app_state: me.state):
                             if auto_enhanced_prompt:
                                 me.icon("auto_fix_normal")
 
-                        me.text(f'"{prompt}"')
+                        me.text(f'"{prompt}"', style=me.Style(font_size="10pt"))
                         with me.box(
                             style=me.Style(gap=3, display="flex", flex_basis="row")
                         ):
@@ -141,11 +173,45 @@ def library_content(app_state: me.state):
                                     src=reference_image,
                                     style=me.Style(height=75, border_radius=6),
                                 )
+                            if last_reference_image:
+                                last_reference_image = last_reference_image.replace(
+                                    "gs://",
+                                    "https://storage.mtls.cloud.google.com/",
+                                )
+                                me.image(
+                                    src=last_reference_image,
+                                    style=me.Style(height=75, border_radius=6),
+                                )
                         # me.html(f"<a href='{video_url}' target='_blank'>video</a>")
 
                         me.text(f"Generated in {round(generation_time)} seconds.")
                         me.divider()
+            # Pagination Controls
+            with me.box(style=me.Style(display="flex", justify_content="center", gap=8, margin=me.Margin(top=20))):
+                me.button(
+                    "Previous",
+                    key="-1",
+                    on_click=handle_page_change,
+                    disabled=pagestate.current_page == 1,
+                )
+                me.text(f"Page {pagestate.current_page} of {total_pages}")
+                me.button(
+                    "Next",
+                    key="1",
+                    on_click=handle_page_change,
+                    disabled=pagestate.current_page == total_pages,
+                )
 
+def handle_page_change(e: me.ClickEvent):
+    """Handle page change logic."""
+    pagestate = me.state(PageState)
+    direction = int(e.key)
+    new_page = pagestate.current_page + direction
+    if 1 <= new_page <= ( (pagestate.total_videos + pagestate.videos_per_page - 1) // pagestate.videos_per_page):
+        pagestate.current_page = new_page
+        pagestate.videos = get_videos_for_page(pagestate.current_page, pagestate.videos_per_page)
+        pagestate.key += 1 #  Update the key
+    return
 
 @me.component
 def pill(label: str, pill_type: str):
