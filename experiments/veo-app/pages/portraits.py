@@ -703,6 +703,7 @@ Do not describe the frame. There should be no lip movement like speaking, but th
                     rewrite_prompt,
                     error_message="",
                     comment="motion portrait",
+                    last_reference_image=None,
                 )
             except Exception as meta_err:
                 print(f"CRITICAL: Failed to store metadata: {meta_err}")

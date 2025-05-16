@@ -16,6 +16,7 @@ import mesop as me
 
 from components.header import header
 
+from config.default import PAGES
 
 def go_to_page(e: me.ClickEvent):
     """go to  page"""
@@ -65,10 +66,17 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                         gap=15,
                     ),
                 ):
-                    media_tile("Veo 2", "movie", "/veo")
-                    media_tile("Motion Portraits", "portrait", "/motion_portraits")
-                    media_tile("Library", "perm_media", "/library")
-                    media_tile("Settings", "settings", "/config")
+                    for i, page in enumerate(PAGES):
+                        if page["display"] == "Home":
+                            continue
+                        else:
+                            media_tile(page["display"], page["icon"], page["route"])
+
+                        # media_tile("Veo 2", "movie", "/veo")
+                        # media_tile("Motion Portraits", "portrait", "/motion_portraits")
+                        # media_tile("Lyria 2", "music_note", "/lyria")
+                        # media_tile("Library", "perm_media", "/library")
+                        # media_tile("Settings", "settings", "/config")
 
 
 @me.component
