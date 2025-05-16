@@ -41,12 +41,13 @@ class MediaItem:
     gcsuri: Optional[str] = None
     prompt: Optional[str] = None
     generation_time: Optional[float] = None
-    timestamp: Optional[str] = None  # ISO string format
+    timestamp: Optional[str] = None
     reference_image: Optional[str] = None
     last_reference_image: Optional[str] = None
     enhanced_prompt: Optional[str] = None
     duration: Optional[float] = None
     error_message: Optional[str] = None
+    mime_type: Optional[str] = None
     raw_data: Optional[Dict] = field(
         default_factory=dict
     )  # To store the raw Firestore document
@@ -57,6 +58,7 @@ def get_media_item_by_id(
 ) -> Optional[MediaItem]:  # Assuming MediaItem class is defined/imported
     """Retrieve a specific media item by its Firestore document ID."""
     try:
+        print(f"Trying to retrieve {item_id}")
         doc_ref = db.collection(config.GENMEDIA_COLLECTION_NAME).document(item_id)
         doc = doc_ref.get()
         if doc.exists:
