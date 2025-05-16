@@ -21,21 +21,12 @@ from pages.styles import (
     SIDENAV_MIN_WIDTH,
 )
 
-page_json = [
-    {"id": 0, "display": "Home", "icon": "home", "route": "/"},
-    {"id": 1,  "display": "Veo", "icon": "movie_filter", "route": "/veo"},
-    {"id": 2, "display": "Portraits", "icon": "portrait", "route": "/motion_portraits"},
-    #{"id": 2, "display": "Lyria", "icon": "music_note", "route": "/lyria"},
-    #{"id": 3, "display": "Imagen", "icon": "image", "route": "/imagen"},
-    {"id": 4, "display": "Library", "icon": "perm_media", "route": "/library"},
-    {
-        "id": 10,
-        "display": "Settings",
-        "icon": "settings",
-        "route": "/config",
-        "align": "bottom",
-    },
-]
+from config.default import Default, PAGES
+
+
+cfg = Default()
+
+page_json = PAGES
 
 
 def on_sidenav_menu_click(e: me.ClickEvent):  # pylint: disable=unused-argument

@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+""" Lyria 2 mesop ui page """
+import time
 import mesop as me
 
 from components.header import header
@@ -20,7 +22,10 @@ from components.page_scaffold import (
 )
 
 from models.lyria import generate_music_with_lyria
+from config.default import Default
+from common.metadata import add_music_metadata
 
+cfg = Default()
 
 @me.stateclass
 class PageState:
@@ -32,6 +37,8 @@ class PageState:
     music_prompt_placeholder: str = ""
     music_prompt_textarea_key: int = 0
     music_upload_uri: str = ""
+    
+    timing: str
 
 
 def lyria_content(app_state: me.state):
@@ -168,6 +175,7 @@ def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
     print(f"Let's make music!: {state.music_prompt_input}")
 
     # invoke lyria & get base64 encoded bytes
+    start_time = time.time()  # Record the starting time
     try:
         destination_blob_name = generate_music_with_lyria(state.music_prompt_input)
 
@@ -177,9 +185,28 @@ def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
         )
 
         print(state.music_upload_uri)
+        
+        
+        
     except ValueError as err:
         state.modal_open = True
         state.modal_message = str(err)
+    finally:
+        end_time = time.time()  # Record the ending time
+        execution_time = end_time - start_time  # Calculate the elapsed time
+        print(f"Execution time: {execution_time} seconds")  # Print the execution time
+        state.timing = f"Generation time: {round(execution_time)} seconds"
+        
+        try:
+            add_music_metadata(
+                model=cfg.LYRIA_MODEL_VERSION,
+                gcsuri=state.music_upload_uri,
+                prompt=state.music_prompt_input,
+                generation_time=execution_time,
+            )
+        except Exception as meta_err:
+            # Handle potential errors during metadata storage itself
+            print(f"CRITICAL: Failed to store metadata: {meta_err}")
 
     state.is_loading = False
     yield

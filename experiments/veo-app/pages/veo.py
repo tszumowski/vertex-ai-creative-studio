@@ -50,7 +50,7 @@ class PageState:
     original_prompt: str
 
     aspect_ratio: str = "16:9"
-    video_length: int = 5
+    video_length: int = 5 # 5-8
 
     # I2V reference Image
     reference_image_file: me.UploadedFile = None
@@ -63,6 +63,9 @@ class PageState:
     last_reference_image_file_key: int = 0
     last_reference_image_gcs: str
     last_reference_image_uri: str
+    
+    # extend
+    video_extend_length: int = 0 # 4-7
 
     # Rewriter
     auto_enhance_prompt: bool = False
@@ -269,7 +272,36 @@ def veo_content(app_state: me.state):
                         )
                         print(f"video_url: {video_url}")
                         me.video(src=video_url, style=me.Style(border_radius=6))
-                        me.text(state.timing)
+                        with me.box(
+                            style=me.Style(
+                                display="flex",
+                                flex_direction="row",
+                                gap=5,
+                                align_items="center",
+                                padding=me.Padding(top=10),
+                            )
+                        ):
+                            me.text(state.timing)
+                            me.select(
+                                label="extend",
+                                options=[
+                                    me.SelectOption(label="None", value="0"),
+                                    me.SelectOption(label="4 seconds", value="4"),
+                                    me.SelectOption(label="5 seconds", value="5"),
+                                    me.SelectOption(label="6 seconds", value="6"),
+                                    me.SelectOption(label="7 seconds", value="7"),
+                                ],
+                                appearance="outline",
+                                style=me.Style(),
+                                value=f"{state.video_extend_length}",
+                                on_selection_change=on_selection_change_extend_length,
+                            )
+                            me.button(
+                                label="Extend",
+                                on_click=on_click_extend,
+                                disabled=True if state.video_extend_length == 0 else False,
+                            )
+                            
 
     with dialog(is_open=state.show_error_dialog):  # pylint: disable=not-context-manager
         # Content within the dialog box
@@ -345,6 +377,12 @@ def on_click_clear_reference_image(e: me.ClickEvent):  # pylint: disable=unused-
     state.is_loading = False
 
 
+def on_selection_change_extend_length(e: me.SelectSelectionChangeEvent):
+    """Adjust the video extend length in seconds based on user event"""
+    state = me.state(PageState)
+    state.video_extend_length = int(e.value)
+
+
 def on_selection_change_length(e: me.SelectSelectionChangeEvent):
     """Adjust the video duration length in seconds based on user event"""
     state = me.state(PageState)
@@ -370,6 +408,12 @@ def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     state.is_loading = False
     state.auto_enhance_prompt = False
     yield
+
+def on_click_extend(e: me.ClickEvent):  # pylint: disable=unused-argument
+    """Extend video"""
+    state = me.state(PageState)
+    print(f"You would like to extend {state.result_video} by {state.video_extend_length} seconds.")
+    print(f"Continue the scene {state.veo_prompt_input} ...")
 
 
 def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
