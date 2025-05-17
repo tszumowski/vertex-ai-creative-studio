@@ -28,7 +28,7 @@ class Default:
     
     # Lyria
     LYRIA_MODEL_VERSION: str = os.environ.get("LYRIA_MODEL_VERSION","lyria-base-001")
-    LYRIA_PROJECT_ID: str = os.environ.get("LYRIA_PROJECT_ID", PROJECT_ID)
+    LYRIA_PROJECT_ID: str = os.environ.get("LYRIA_PROJECT_ID")
     MEDIA_BUCKET: str = os.environ.get("MEDIA_BUCKET", f"{PROJECT_ID}-assets")
     
 
@@ -50,23 +50,29 @@ class Default:
 #     },
 # ]
 
-PAGES = [
+WELCOME_PAGE = [
     {"id": 0, "display": "Home", "icon": "home", "route": "/"},
-    {"id": 1, "display": "Veo", "icon": "movie_filter", "route": "/veo"},
-    {"id": 2, "display": "Portraits", "icon": "portrait", "route": "/motion_portraits"},
+    {"id": 6, "display": "Imagen", "icon": "image", "group": "foundation"},
+    {"id": 10, "display": "Veo", "icon": "movie_filter", "route": "/veo", "group": "foundation"},
+    {"id": 15, "display": "Chirp 3 HD", "icon": "graphic_eq", "group": "foundation"},
 ]
 
 if Default.LYRIA_PROJECT_ID is not None:
-    PAGES.append({"id": 3, "display": "Lyria", "icon": "music_note", "route": "/lyria"})
+    WELCOME_PAGE.append({"id": 20, "display": "Lyria", "icon": "music_note", "route": "/lyria", "group": "foundation"})
+else:
+    WELCOME_PAGE.append({"id": 30, "display": "Lyria", "icon": "music_note", "group": "foundation"})
 
-PAGES.extend([
+WELCOME_PAGE.append({"id": 40, "display": "Motion Portraits", "icon": "portrait", "route": "/motion_portraits", "group": "workflows"})
+
+WELCOME_PAGE.extend([
     #{"id": 3, "display": "Imagen", "icon": "image", "route": "/imagen"}, # This ID might conflict if Lyria is also 3
-    {"id": 5, "display": "Library", "icon": "perm_media", "route": "/library"},
+    {"id": 50, "display": "Library", "icon": "perm_media", "route": "/library", "group": "app"},
     {
-        "id": 10,
+        "id": 100,
         "display": "Settings",
         "icon": "settings",
         "route": "/config",
         "align": "bottom",
+        "group": "app"
     },
 ])
