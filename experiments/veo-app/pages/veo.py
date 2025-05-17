@@ -29,6 +29,7 @@ from components.page_scaffold import (
 from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import image_to_video, text_to_video, images_to_video
+from models.veo import image_to_video, text_to_video, images_to_video
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
 from config.rewriters import VIDEO_REWRITER
 from models.gemini import rewriter
@@ -47,6 +48,8 @@ class PageState:
     veo_prompt_input: str = ""
     veo_prompt_placeholder: str = ""
     veo_prompt_textarea_key: int = 0
+    
+    veo_mode: str = "t2v"
     
     veo_mode: str = "t2v"
 
@@ -243,6 +246,100 @@ def veo_content(app_state: me.state):
                                 )
                             else:
                                 me.image(src=None, style=me.Style(height=200))
+                with me.box(
+                    style=me.Style(
+                        flex_direction="column", display="flex",
+                        align_items="center",
+                        flex_basis="max(480px, calc(50% - 48px))",
+                        padding=me.Padding(bottom=15),
+                    ),
+                ):
+                    me.button_toggle(
+                        value=state.veo_mode,
+                        buttons=[
+                            me.ButtonToggleButton(label="t2v", value="t2v"),
+                            me.ButtonToggleButton(label="i2v", value="i2v"),
+                            me.ButtonToggleButton(label="interpolation", value="interpolation"),
+                        ],
+                        multiple=False,
+                        hide_selection_indicator=True,
+                        on_change=on_selection_change_veo_mode,
+                    )
+                    with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
+                        if state.veo_mode == "t2v":
+                            me.image(src=None, style=me.Style(height=250))
+                        
+                        if state.veo_mode == "interpolation":
+                            if state.reference_image_uri:
+                                with me.box(style=me.Style(display="flex", flex_direction="row", gap=5)):
+                                    output_url = state.reference_image_uri
+                                    # output_url = f"https://storage.mtls.cloud.google.com/{state.reference_image_uri}"
+                                    # output_url = "https://storage.mtls.cloud.google.com/ghchinoy-genai-sa-assets-flat/edits/image (30).png"
+                                    print(f"displaying {output_url}")
+                                    me.image(
+                                        src=output_url,
+                                        style=me.Style(
+                                            height=150,
+                                            border_radius=12,
+                                        ),
+                                        key=str(state.reference_image_file_key),
+                                    )
+                                    if state.last_reference_image_uri:
+                                        output_url = state.last_reference_image_uri
+                                        # output_url = f"https://storage.mtls.cloud.google.com/{state.reference_image_uri}"
+                                        # output_url = "https://storage.mtls.cloud.google.com/ghchinoy-genai-sa-assets-flat/edits/image (30).png"
+                                        print(f"displaying {output_url}")
+                                        me.image(
+                                            src=output_url,
+                                            style=me.Style(
+                                                height=150,
+                                                border_radius=12,
+                                            ),
+                                            key=str(state.last_reference_image_file_key),
+                                        )
+                            else:
+                                me.image(src=None, style=me.Style(height=200))
+                            with me.box(
+                                style=me.Style(display="flex", flex_direction="row", gap=5)
+                            ):
+                                # me.button(label="Upload", type="flat", disabled=True)
+                                me.uploader(
+                                    label="Upload first",
+                                    accepted_file_types=["image/jpeg", "image/png"],
+                                    on_upload=on_click_upload,
+                                    type="raised",
+                                    color="primary",
+                                    style=me.Style(font_weight="bold"),
+                                )
+                                me.uploader(
+                                    label="Upload last",
+                                    key="last",
+                                    accepted_file_types=["image/jpeg", "image/png"],
+                                    on_upload=on_click_upload,
+                                    type="raised",
+                                    color="primary",
+                                    style=me.Style(font_weight="bold"),
+                                )
+                                me.button(
+                                    label="Clear", on_click=on_click_clear_reference_image
+                                )
+
+                        if state.veo_mode == "i2v":
+                            if state.reference_image_uri:
+                                output_url = state.reference_image_uri
+                                # output_url = f"https://storage.mtls.cloud.google.com/{state.reference_image_uri}"
+                                # output_url = "https://storage.mtls.cloud.google.com/ghchinoy-genai-sa-assets-flat/edits/image (30).png"
+                                print(f"displaying {output_url}")
+                                me.image(
+                                    src=output_url,
+                                    style=me.Style(
+                                        height=150,
+                                        border_radius=12,
+                                    ),
+                                    key=str(state.reference_image_file_key),
+                                )
+                            else:
+                                me.image(src=None, style=me.Style(height=200))
 
                             with me.box(
                                 style=me.Style(display="flex", flex_direction="row", gap=5)
@@ -259,7 +356,23 @@ def veo_content(app_state: me.state):
                                 me.button(
                                     label="Clear", on_click=on_click_clear_reference_image
                                 )
+                            with me.box(
+                                style=me.Style(display="flex", flex_direction="row", gap=5)
+                            ):
+                                # me.button(label="Upload", type="flat", disabled=True)
+                                me.uploader(
+                                    label="Upload",
+                                    accepted_file_types=["image/jpeg", "image/png"],
+                                    on_upload=on_click_upload,
+                                    type="raised",
+                                    color="primary",
+                                    style=me.Style(font_weight="bold"),
+                                )
+                                me.button(
+                                    label="Clear", on_click=on_click_clear_reference_image
+                                )
 
+            me.box(style=me.Style(height=50))
             me.box(style=me.Style(height=50))
 
             # Generated video
@@ -326,6 +439,12 @@ def on_selection_change_veo_mode(e: me.ButtonToggleChangeEvent):
     state.veo_mode = e.value
 
 
+def on_selection_change_veo_mode(e: me.ButtonToggleChangeEvent):
+    """toggle veo mode"""
+    state = me.state(PageState)
+    state.veo_mode = e.value
+
+
 def on_change_auto_enhance_prompt(e: me.CheckboxChangeEvent):
     """Toggle auto-enhance prompt"""
     state = me.state(PageState)
@@ -335,6 +454,31 @@ def on_change_auto_enhance_prompt(e: me.CheckboxChangeEvent):
 def on_click_upload(e: me.UploadEvent):
     """Upload image to GCS"""
     state = me.state(PageState)
+    if e.key == "last":
+        print("Interpolation: adding last image")
+        state.last_reference_image_file = e.file
+        contents = e.file.getvalue()
+        destination_blob_name = store_to_gcs(
+            "uploads", e.file.name, e.file.mime_type, contents
+        )
+        # gcs
+        state.last_reference_image_gcs = f"gs://{destination_blob_name}"
+        # url
+        state.last_reference_image_uri = (
+            f"https://storage.mtls.cloud.google.com/{destination_blob_name}"
+        )
+    else: 
+        state.reference_image_file = e.file
+        contents = e.file.getvalue()
+        destination_blob_name = store_to_gcs(
+            "uploads", e.file.name, e.file.mime_type, contents
+        )
+        # gcs
+        state.reference_image_gcs = f"gs://{destination_blob_name}"
+        # url
+        state.reference_image_uri = (
+            f"https://storage.mtls.cloud.google.com/{destination_blob_name}"
+        )
     if e.key == "last":
         print("Interpolation: adding last image")
         state.last_reference_image_file = e.file
@@ -373,6 +517,11 @@ def on_click_clear_reference_image(e: me.ClickEvent):  # pylint: disable=unused-
     state.reference_image_file_key += 1
     state.reference_image_uri = None
     state.reference_image_gcs = None
+    
+    state.last_reference_image_file = None
+    state.last_reference_image_file_key += 1
+    state.last_reference_image_uri = None
+    state.last_reference_image_gcs = None
     
     state.last_reference_image_file = None
     state.last_reference_image_file_key += 1
@@ -455,6 +604,31 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
 
     try:
         if state.reference_image_gcs:
+            if state.last_reference_image_gcs:
+                print(f"Interpolation invoked. I see you have two images! {state.reference_image_gcs} & {state.last_reference_image_gcs}")
+                op = images_to_video(
+                    state.veo_prompt_input,
+                    state.reference_image_gcs,
+                    state.last_reference_image_gcs,
+                    seed,
+                    aspect_ratio,
+                    sample_count,
+                    f"gs://{config.VIDEO_BUCKET}",
+                    rewrite_prompt,
+                    duration_seconds,
+                )
+            else:
+                print(f"I2V invoked. I see you have an image! {state.reference_image_gcs} ")
+                op = image_to_video(
+                    state.veo_prompt_input,
+                    state.reference_image_gcs,
+                    seed,
+                    aspect_ratio,
+                    sample_count,
+                    f"gs://{config.VIDEO_BUCKET}",
+                    rewrite_prompt,
+                    duration_seconds,
+                )
             if state.last_reference_image_gcs:
                 print(f"Interpolation invoked. I see you have two images! {state.reference_image_gcs} & {state.last_reference_image_gcs}")
                 op = images_to_video(
@@ -586,6 +760,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
                 rewrite_prompt,
                 error_message=current_error_message,
                 comment="veo2 default generation",
+                last_reference_image=state.last_reference_image_gcs,
                 last_reference_image=state.last_reference_image_gcs,
             )
         except Exception as meta_err:

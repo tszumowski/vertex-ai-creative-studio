@@ -44,6 +44,7 @@ from components.pill import pill
 
 @me.stateclass
 @dataclass
+@dataclass
 class PageState:
     """Local Page State"""
     is_loading: bool = False
