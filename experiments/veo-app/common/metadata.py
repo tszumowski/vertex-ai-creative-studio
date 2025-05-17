@@ -190,7 +190,6 @@ def add_video_metadata(
             "generation_time": generation_time,
             "reference_image": reference_image,
             "last_reference_image": last_reference_image,
-            "last_reference_image": last_reference_image,
             "enhanced_prompt": rewrite_prompt,
             "mime_type": "video/mp4",
             "error_message": error_message,
