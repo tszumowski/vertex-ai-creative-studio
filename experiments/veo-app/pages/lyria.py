@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+""" Lyria 2 mesop ui page """
+import time
 import mesop as me
 
 from components.header import header
@@ -20,7 +22,14 @@ from components.page_scaffold import (
 )
 
 from models.lyria import generate_music_with_lyria
+from config.default import Default
+from common.metadata import add_music_metadata
 
+from models.gemini import rewriter
+
+from config.rewriters import MUSIC_REWRITER
+
+cfg = Default()
 
 @me.stateclass
 class PageState:
@@ -32,6 +41,8 @@ class PageState:
     music_prompt_placeholder: str = ""
     music_prompt_textarea_key: int = 0
     music_upload_uri: str = ""
+    
+    timing: str
 
 
 def lyria_content(app_state: me.state):
@@ -50,7 +61,7 @@ def lyria_content(app_state: me.state):
                 )
                 me.box(style=me.Style(height=16))
                 subtle_lyria_input()
-                me.box(style=me.Style(height=24))
+                #me.box(style=me.Style(height=24))
 
             me.box(style=me.Style(height=24))
 
@@ -105,7 +116,7 @@ def subtle_lyria_input():
                 min_rows=8,
                 placeholder="enter a musical audio description",
                 style=me.Style(
-                    padding=me.Padding(top=16, left=16, right=16),
+                    padding=me.Padding(top=16, left=16, right=16, bottom=16),
                     background=me.theme_var("secondary-container"),
                     outline="none",
                     width="100%",
@@ -125,6 +136,7 @@ def subtle_lyria_input():
                 display="flex",
                 flex_direction="column",
                 gap=10,
+                padding=me.Padding( left=16, right=16, bottom=16),
             )
         ):
             # do the lyria
@@ -140,7 +152,7 @@ def subtle_lyria_input():
             # rewriter
             with me.content_button(
                 type="icon",
-                on_click=on_click_lyria,
+                on_click=on_click_lyria_rewriter,
             ):
                 with me.box(style=icon_style):
                     me.icon("auto_awesome")
@@ -158,6 +170,16 @@ def on_blur_lyria_prompt(e: me.InputBlurEvent):
     me.state(PageState).music_prompt_input = e.value
 
 
+def on_click_lyria_rewriter(e: me.ClickEvent):
+    """Rewrite the given prompt"""
+    state = me.state(PageState)
+    rewritten_prompt = rewriter(state.music_prompt_input, MUSIC_REWRITER)
+    state.music_prompt_input = rewritten_prompt
+
+    state.music_prompt_placeholder = rewritten_prompt
+    yield
+
+
 def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
     """generate music"""
     state = me.state(PageState)
@@ -168,6 +190,7 @@ def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
     print(f"Let's make music!: {state.music_prompt_input}")
 
     # invoke lyria & get base64 encoded bytes
+    start_time = time.time()  # Record the starting time
     try:
         destination_blob_name = generate_music_with_lyria(state.music_prompt_input)
 
@@ -177,15 +200,32 @@ def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
         )
 
         print(state.music_upload_uri)
+
     except ValueError as err:
         state.modal_open = True
         state.modal_message = str(err)
+    finally:
+        end_time = time.time()  # Record the ending time
+        execution_time = end_time - start_time  # Calculate the elapsed time
+        print(f"Execution time: {execution_time} seconds")  # Print the execution time
+        state.timing = f"Generation time: {round(execution_time)} seconds"
+        
+        try:
+            add_music_metadata(
+                model=cfg.LYRIA_MODEL_VERSION,
+                gcsuri=state.music_upload_uri,
+                prompt=state.music_prompt_input,
+                generation_time=execution_time,
+            )
+        except Exception as meta_err:
+            # Handle potential errors during metadata storage itself
+            print(f"CRITICAL: Failed to store metadata: {meta_err}")
 
     state.is_loading = False
     yield
 
 
-def clear_music(e: me.ClickEvent):
+def clear_music(e: me.ClickEvent):  # pylint: disable=unused-argument
     """Clears music input"""
     state = me.state(PageState)
     state.music_prompt_input = ""
@@ -196,7 +236,7 @@ def clear_music(e: me.ClickEvent):
 
 
 _BOX_STYLE = me.Style(
-    flex_basis="max(480px, calc(50% - 48px))",
+    #flex_basis="max(480px, calc(50% - 48px))",
     # background="#fff",
     background=me.theme_var("background"),
     border_radius=12,
