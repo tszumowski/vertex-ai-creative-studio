@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Welcome page"""
+
+from typing import Dict, List
+from collections import defaultdict
+
 import mesop as me
 
+from components.capability_tile import media_tile
 from components.header import header
+from config.default import WELCOME_PAGE
 
-from config.default import PAGES
-
-def go_to_page(e: me.ClickEvent):
-    """go to  page"""
-    me.navigate(e.key)
+GROUP_ORDER = ["foundation", "workflows", "app"]
 
 
 def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
@@ -48,72 +50,75 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                     flex_direction="column",
                 )
             ):
-                header("Welcome", "home")
+                header("GenMedia Creative Studio", "home")
 
+                # me.text(
+                #     "GenMedia Creative Studio",
+                #     style=me.Style(
+                #         color="transparent",
+                #         font_size="2.5rem",
+                #         font_weight="bold",
+                #         background=(
+                #             "linear-gradient(90deg, rgb(0, 44, 112) 0%, rgb(7, 110, 255) 100%)"
+                #             "text"
+                #         ),
+                #     ),
+                # )
                 me.text(
-                    "Welcome to the Veo module, a component of Vertex AI GenMedia Creative Studio"
+                    "Welcome to the v.next of Vertex AI GenMedia Creative Studio"
                 )
 
-                me.box(style=me.Style(height=16))
+                # Group pages by the "group" key
+                grouped_pages: Dict[str, List[Dict]] = defaultdict(list)
+                pages_to_display = [
+                    page for page in WELCOME_PAGE if page.get("display") != "Home"
+                ]
 
-                with me.box(
-                    style=me.Style(
-                        align_items="center",
-                        display="flex",
-                        flex_direction="row",
-                        align_content="center",
-                        justify_content="center",
-                        gap=15,
-                    ),
-                ):
-                    for i, page in enumerate(PAGES):
-                        if page["display"] == "Home":
-                            continue
-                        else:
-                            media_tile(page["display"], page["icon"], page["route"])
+                for page_data in pages_to_display:
+                    group_name = page_data.get("group")
+                    if group_name:
+                        grouped_pages[group_name].append(page_data)
 
-                        # media_tile("Veo 2", "movie", "/veo")
-                        # media_tile("Motion Portraits", "portrait", "/motion_portraits")
-                        # media_tile("Lyria 2", "music_note", "/lyria")
-                        # media_tile("Library", "perm_media", "/library")
-                        # media_tile("Settings", "settings", "/config")
+                # Render each group based on GROUP_ORDER
+                for group_name in GROUP_ORDER:
+                    items_in_group = grouped_pages.get(
+                        group_name
+                    )  # Get items for the current group
 
+                    if (
+                        not items_in_group
+                    ):  # Skip if group is not in data or has no items
+                        continue
 
-@me.component
-def media_tile(label: str, icon: str, route: str):
-    """Media component"""
-    with me.box(
-        style=me.Style(
-            display="flex",
-            flex_direction="row",
-            gap=5,
-            align_items="center",
-            border=me.Border().all(me.BorderSide(style="solid", color=me.theme_var("tertiary-fixed-variant"))),
-            border_radius=12,
-            height=200,
-            width=200,
-            justify_content="center",
-            background=me.theme_var("secondary-container"),
-            cursor="pointer"
-        ),
-        on_click=go_to_page,
-        key=route,
-    ):
-        # with me.content_button(
-        #     #on_click=go_to_page,
-        #     #key=route,
-        #     style=me.Style(font_size="18px"),
-        # ):
-        with me.box(
-            style=me.Style(
-                display="flex",
-                flex_direction="column",
-                align_items="center",
-                font_size="18px",
-                gap=5,
-            ),
-        ):
-            me.icon(
-                icon, style=me.Style(font_size="48pt", width="70px", height="60px", color=me.theme_var("on-surface"))
-            )
-            me.text(label, style=me.Style(font_weight="medium"))
+                    # Group Title
+                    me.text(
+                        group_name.replace("_", " ").title(),
+                        style=me.Style(
+                            font_size="1.2rem",
+                            font_weight="bold",
+                            margin=me.Margin(top=24, bottom=12),
+                            color=me.theme_var("on-surface"),
+                            background=(
+                             "linear-gradient(90deg, rgb(0, 44, 112) 0%, rgb(7, 110, 255) 100%)"
+                             "text"
+                         ),
+                        ),
+                    )
+
+                    # Row for tiles in this group
+                    with me.box(
+                        style=me.Style(
+                            display="flex",
+                            flex_direction="row",
+                            flex_wrap="wrap",
+                            gap=16,
+                            justify_content="flex-start",
+                            margin=me.Margin(bottom=24),
+                        ),
+                    ):
+                        for page_data in items_in_group:
+                            route = page_data.get("route")
+                            icon = page_data.get("icon", "broken_image")
+                            display_name = page_data.get("display", "Unnamed Page")
+
+                            media_tile(display_name, icon, route)

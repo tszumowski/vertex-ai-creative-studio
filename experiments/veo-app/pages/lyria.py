@@ -1,4 +1,4 @@
-# Copyright 2024 Google LLC
+# Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,10 @@ from components.page_scaffold import (
 from models.lyria import generate_music_with_lyria
 from config.default import Default
 from common.metadata import add_music_metadata
+
+from models.gemini import rewriter
+
+from config.rewriters import MUSIC_REWRITER
 
 cfg = Default()
 
@@ -57,7 +61,7 @@ def lyria_content(app_state: me.state):
                 )
                 me.box(style=me.Style(height=16))
                 subtle_lyria_input()
-                me.box(style=me.Style(height=24))
+                #me.box(style=me.Style(height=24))
 
             me.box(style=me.Style(height=24))
 
@@ -112,7 +116,7 @@ def subtle_lyria_input():
                 min_rows=8,
                 placeholder="enter a musical audio description",
                 style=me.Style(
-                    padding=me.Padding(top=16, left=16, right=16),
+                    padding=me.Padding(top=16, left=16, right=16, bottom=16),
                     background=me.theme_var("secondary-container"),
                     outline="none",
                     width="100%",
@@ -132,6 +136,7 @@ def subtle_lyria_input():
                 display="flex",
                 flex_direction="column",
                 gap=10,
+                padding=me.Padding( left=16, right=16, bottom=16),
             )
         ):
             # do the lyria
@@ -147,7 +152,7 @@ def subtle_lyria_input():
             # rewriter
             with me.content_button(
                 type="icon",
-                on_click=on_click_lyria,
+                on_click=on_click_lyria_rewriter,
             ):
                 with me.box(style=icon_style):
                     me.icon("auto_awesome")
@@ -163,6 +168,16 @@ def subtle_lyria_input():
 def on_blur_lyria_prompt(e: me.InputBlurEvent):
     """Music prompt blur event"""
     me.state(PageState).music_prompt_input = e.value
+
+
+def on_click_lyria_rewriter(e: me.ClickEvent):
+    """Rewrite the given prompt"""
+    state = me.state(PageState)
+    rewritten_prompt = rewriter(state.music_prompt_input, MUSIC_REWRITER)
+    state.music_prompt_input = rewritten_prompt
+
+    state.music_prompt_placeholder = rewritten_prompt
+    yield
 
 
 def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
@@ -185,9 +200,7 @@ def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
         )
 
         print(state.music_upload_uri)
-        
-        
-        
+
     except ValueError as err:
         state.modal_open = True
         state.modal_message = str(err)
@@ -212,7 +225,7 @@ def on_click_lyria(e: me.ClickEvent):  # pylint: disable=unused-argument
     yield
 
 
-def clear_music(e: me.ClickEvent):
+def clear_music(e: me.ClickEvent):  # pylint: disable=unused-argument
     """Clears music input"""
     state = me.state(PageState)
     state.music_prompt_input = ""
@@ -223,7 +236,7 @@ def clear_music(e: me.ClickEvent):
 
 
 _BOX_STYLE = me.Style(
-    flex_basis="max(480px, calc(50% - 48px))",
+    #flex_basis="max(480px, calc(50% - 48px))",
     # background="#fff",
     background=me.theme_var("background"),
     border_radius=12,

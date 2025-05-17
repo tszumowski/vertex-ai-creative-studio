@@ -12,59 +12,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import mesop as me
+#import numpy as np 
 import pandas as pd
 
-import mesop as me
-
-from components.header import header
-from components.page_scaffold import (
+from components.header import header  
+from components.page_scaffold import (  
     page_frame,
     page_scaffold,
 )
-from state.state import AppState
-
-
 from config.default import Default
+from state.state import AppState  
 
 
 def get_config_table():
-    """ Construct a table of the Defaults """
+    """Construct a table of the Defaults, including optional new attributes"""
 
-    app_state = me.state(AppState)
-    df = pd.DataFrame(
-        data={
-            "Config": [
-                "Vertex AI",
-                "Project ID",
-                "Location",
-                "Model ID",
-                "Veo Project",
-                "Veo Model ID",
-                "Veo Experimental Model ID",
-                "GenMedia Bucket",
-                #"Video Bucket",
-                #"Image Bucket",
-                "GenMedia Collection",
-                #"User Email"
-            ],
-            "Value": [
-                Default.INIT_VERTEX,
-                Default.PROJECT_ID,
-                Default.LOCATION,
-                Default.MODEL_ID,
-                Default.VEO_PROJECT_ID,
-                Default.VEO_MODEL_ID,
-                Default.VEO_EXP_MODEL_ID,
-                f"gs://{Default.GENMEDIA_BUCKET}",
-                #f"gs://{Default.VIDEO_BUCKET}",
-                #f"gs://{Default.IMAGE_BUCKET}",
-                f"{Default.GENMEDIA_FIREBASE_DB} / {Default.GENMEDIA_COLLECTION_NAME}",
-                #app_state.user_email,
-            ]
-        }
-    )
+    # app_state = me.state(AppState) # Not currently used in this function
+
+    # Start with a base list of configurations
+    config_data = {
+        "Config": [
+            "Vertex AI Enabled",
+            "Project ID",
+            "Location",
+            "Default Model ID",
+            "GenMedia Bucket",
+            "GenMedia Firestore DB / Collection",
+            "Veo Project ID",
+            "Veo Model ID",
+            "Veo Experimental Model ID",
+        ],
+        "Value": [
+            str(Default.INIT_VERTEX),
+            Default.PROJECT_ID,
+            Default.LOCATION,
+            Default.MODEL_ID,
+            f"gs://{Default.GENMEDIA_BUCKET}" if Default.GENMEDIA_BUCKET else "Not Set",
+            f"{Default.GENMEDIA_FIREBASE_DB} / {Default.GENMEDIA_COLLECTION_NAME}"
+            if Default.GENMEDIA_FIREBASE_DB and Default.GENMEDIA_COLLECTION_NAME
+            else "Not Set",
+            Default.VEO_PROJECT_ID,
+            Default.VEO_MODEL_ID,
+            Default.VEO_EXP_MODEL_ID,
+        ],
+    }
+
+    # Conditionally add new configurations if they exist and have a value
+    # Example: LYRIA_PROJECT_ID
+    if hasattr(Default, "LYRIA_PROJECT_ID"):
+        lyria_project_id_val = getattr(Default, "LYRIA_PROJECT_ID")
+        if (
+            lyria_project_id_val is not None and lyria_project_id_val != ""
+        ):  # Check if it has a meaningful value
+            config_data["Config"].append("Lyria Project ID")
+            config_data["Value"].append(lyria_project_id_val)
+        config_data["Config"].append("Lyria Model Version")
+        config_data["Value"].append(Default.LYRIA_MODEL_VERSION)
+
+    df = pd.DataFrame(data=config_data)
     return df
+
 
 def config_page_contents(app_state: me.state):  # pylint: disable=unused-argument
     """Configurations page content"""
@@ -74,12 +82,9 @@ def config_page_contents(app_state: me.state):  # pylint: disable=unused-argumen
 
             me.table(
                 get_config_table(),
-                #on_click=on_click,
                 header=me.TableHeader(sticky=True),
                 columns={
                     "Config": me.TableColumn(sticky=True),
                     "Value": me.TableColumn(sticky=True),
                 },
             )
-            
-            

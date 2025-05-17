@@ -30,6 +30,10 @@ from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import image_to_video, text_to_video, images_to_video
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
+from config.rewriters import VIDEO_REWRITER
+from models.gemini import rewriter
+
+
 
 config = Default()
 
@@ -416,6 +420,15 @@ def on_click_extend(e: me.ClickEvent):  # pylint: disable=unused-argument
     print(f"Continue the scene {state.veo_prompt_input} ...")
 
 
+def on_click_custom_rewriter(e: me.ClickEvent):  # pylint: disable=unused-argument
+    """ Veo custom rewriter """
+    state = me.state(PageState)
+    rewritten_prompt = rewriter(state.veo_prompt_input, VIDEO_REWRITER)
+    state.veo_prompt_input = rewritten_prompt
+    state.veo_prompt_placeholder = rewritten_prompt
+    yield
+
+
 def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
     """Veo generate request handler"""
     state = me.state(PageState)
@@ -659,7 +672,7 @@ def subtle_veo_input():
             # invoke gemini
             with me.content_button(
                 type="icon",
-                disabled=True,
+                on_click=on_click_custom_rewriter,
             ):
                 with me.box(style=icon_style):
                     me.icon("auto_awesome")

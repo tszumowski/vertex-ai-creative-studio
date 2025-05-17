@@ -13,8 +13,8 @@
 # limitations under the License.
 import mesop as me
 
-SIDENAV_MIN_WIDTH = 68
-SIDENAV_MAX_WIDTH = 156
+SIDENAV_MIN_WIDTH = 76
+SIDENAV_MAX_WIDTH = 168
 
 DEFAULT_MENU_STYLE = me.Style(align_content="left")
 
