@@ -29,7 +29,12 @@ from components.page_scaffold import (
 from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import image_to_video, text_to_video, images_to_video
+from models.veo import image_to_video, text_to_video, images_to_video
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
+from config.rewriters import VIDEO_REWRITER
+from models.gemini import rewriter
+
+
 
 config = Default()
 
@@ -50,7 +55,7 @@ class PageState:
     original_prompt: str
 
     aspect_ratio: str = "16:9"
-    video_length: int = 5
+    video_length: int = 5 # 5-8
 
     # I2V reference Image
     reference_image_file: me.UploadedFile = None
@@ -63,6 +68,9 @@ class PageState:
     last_reference_image_file_key: int = 0
     last_reference_image_gcs: str
     last_reference_image_uri: str
+    
+    # extend
+    video_extend_length: int = 0 # 4-7
 
     # Rewriter
     auto_enhance_prompt: bool = False
@@ -237,22 +245,6 @@ def veo_content(app_state: me.state):
                             else:
                                 me.image(src=None, style=me.Style(height=200))
 
-                            with me.box(
-                                style=me.Style(display="flex", flex_direction="row", gap=5)
-                            ):
-                                # me.button(label="Upload", type="flat", disabled=True)
-                                me.uploader(
-                                    label="Upload",
-                                    accepted_file_types=["image/jpeg", "image/png"],
-                                    on_upload=on_click_upload,
-                                    type="raised",
-                                    color="primary",
-                                    style=me.Style(font_weight="bold"),
-                                )
-                                me.button(
-                                    label="Clear", on_click=on_click_clear_reference_image
-                                )
-
             me.box(style=me.Style(height=50))
 
             # Generated video
@@ -269,7 +261,36 @@ def veo_content(app_state: me.state):
                         )
                         print(f"video_url: {video_url}")
                         me.video(src=video_url, style=me.Style(border_radius=6))
-                        me.text(state.timing)
+                        with me.box(
+                            style=me.Style(
+                                display="flex",
+                                flex_direction="row",
+                                gap=5,
+                                align_items="center",
+                                padding=me.Padding(top=10),
+                            )
+                        ):
+                            me.text(state.timing)
+                            me.select(
+                                label="extend",
+                                options=[
+                                    me.SelectOption(label="None", value="0"),
+                                    me.SelectOption(label="4 seconds", value="4"),
+                                    me.SelectOption(label="5 seconds", value="5"),
+                                    me.SelectOption(label="6 seconds", value="6"),
+                                    me.SelectOption(label="7 seconds", value="7"),
+                                ],
+                                appearance="outline",
+                                style=me.Style(),
+                                value=f"{state.video_extend_length}",
+                                on_selection_change=on_selection_change_extend_length,
+                            )
+                            me.button(
+                                label="Extend",
+                                on_click=on_click_extend,
+                                disabled=True if state.video_extend_length == 0 else False,
+                            )
+                            
 
     with dialog(is_open=state.show_error_dialog):  # pylint: disable=not-context-manager
         # Content within the dialog box
@@ -324,6 +345,31 @@ def on_click_upload(e: me.UploadEvent):
         state.reference_image_uri = (
             f"https://storage.mtls.cloud.google.com/{destination_blob_name}"
         )
+    if e.key == "last":
+        print("Interpolation: adding last image")
+        state.last_reference_image_file = e.file
+        contents = e.file.getvalue()
+        destination_blob_name = store_to_gcs(
+            "uploads", e.file.name, e.file.mime_type, contents
+        )
+        # gcs
+        state.last_reference_image_gcs = f"gs://{destination_blob_name}"
+        # url
+        state.last_reference_image_uri = (
+            f"https://storage.mtls.cloud.google.com/{destination_blob_name}"
+        )
+    else: 
+        state.reference_image_file = e.file
+        contents = e.file.getvalue()
+        destination_blob_name = store_to_gcs(
+            "uploads", e.file.name, e.file.mime_type, contents
+        )
+        # gcs
+        state.reference_image_gcs = f"gs://{destination_blob_name}"
+        # url
+        state.reference_image_uri = (
+            f"https://storage.mtls.cloud.google.com/{destination_blob_name}"
+        )
     # log
     print(
         f"{destination_blob_name} with contents len {len(contents)} of type {e.file.mime_type} uploaded to {config.GENMEDIA_BUCKET}."
@@ -343,6 +389,12 @@ def on_click_clear_reference_image(e: me.ClickEvent):  # pylint: disable=unused-
     state.last_reference_image_uri = None
     state.last_reference_image_gcs = None
     state.is_loading = False
+
+
+def on_selection_change_extend_length(e: me.SelectSelectionChangeEvent):
+    """Adjust the video extend length in seconds based on user event"""
+    state = me.state(PageState)
+    state.video_extend_length = int(e.value)
 
 
 def on_selection_change_length(e: me.SelectSelectionChangeEvent):
@@ -369,6 +421,21 @@ def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     state.aspect_ratio = "16:9"
     state.is_loading = False
     state.auto_enhance_prompt = False
+    yield
+
+def on_click_extend(e: me.ClickEvent):  # pylint: disable=unused-argument
+    """Extend video"""
+    state = me.state(PageState)
+    print(f"You would like to extend {state.result_video} by {state.video_extend_length} seconds.")
+    print(f"Continue the scene {state.veo_prompt_input} ...")
+
+
+def on_click_custom_rewriter(e: me.ClickEvent):  # pylint: disable=unused-argument
+    """ Veo custom rewriter """
+    state = me.state(PageState)
+    rewritten_prompt = rewriter(state.veo_prompt_input, VIDEO_REWRITER)
+    state.veo_prompt_input = rewritten_prompt
+    state.veo_prompt_placeholder = rewritten_prompt
     yield
 
 
@@ -398,6 +465,31 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
 
     try:
         if state.reference_image_gcs:
+            if state.last_reference_image_gcs:
+                print(f"Interpolation invoked. I see you have two images! {state.reference_image_gcs} & {state.last_reference_image_gcs}")
+                op = images_to_video(
+                    state.veo_prompt_input,
+                    state.reference_image_gcs,
+                    state.last_reference_image_gcs,
+                    seed,
+                    aspect_ratio,
+                    sample_count,
+                    f"gs://{config.VIDEO_BUCKET}",
+                    rewrite_prompt,
+                    duration_seconds,
+                )
+            else:
+                print(f"I2V invoked. I see you have an image! {state.reference_image_gcs} ")
+                op = image_to_video(
+                    state.veo_prompt_input,
+                    state.reference_image_gcs,
+                    seed,
+                    aspect_ratio,
+                    sample_count,
+                    f"gs://{config.VIDEO_BUCKET}",
+                    rewrite_prompt,
+                    duration_seconds,
+                )
             if state.last_reference_image_gcs:
                 print(f"Interpolation invoked. I see you have two images! {state.reference_image_gcs} & {state.last_reference_image_gcs}")
                 op = images_to_video(
@@ -615,7 +707,7 @@ def subtle_veo_input():
             # invoke gemini
             with me.content_button(
                 type="icon",
-                disabled=True,
+                on_click=on_click_custom_rewriter,
             ):
                 with me.box(style=icon_style):
                     me.icon("auto_awesome")

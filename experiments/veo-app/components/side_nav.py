@@ -11,31 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from typing import Optional
+
 import mesop as me
 
-from state.state import AppState
+from config.default import WELCOME_PAGE, Default
 from pages.styles import (
     _FANCY_TEXT_GRADIENT,
     DEFAULT_MENU_STYLE,
     SIDENAV_MAX_WIDTH,
     SIDENAV_MIN_WIDTH,
 )
+from state.state import AppState
 
-page_json = [
-    {"id": 0, "display": "Home", "icon": "home", "route": "/"},
-    {"id": 1,  "display": "Veo", "icon": "movie_filter", "route": "/veo"},
-    {"id": 2, "display": "Portraits", "icon": "portrait", "route": "/motion_portraits"},
-    #{"id": 2, "display": "Lyria", "icon": "music_note", "route": "/lyria"},
-    #{"id": 3, "display": "Imagen", "icon": "image", "route": "/imagen"},
-    {"id": 4, "display": "Library", "icon": "perm_media", "route": "/library"},
-    {
-        "id": 10,
-        "display": "Settings",
-        "icon": "settings",
-        "route": "/config",
-        "align": "bottom",
-    },
-]
+cfg = Default()
+
+page_json = WELCOME_PAGE
 
 
 def on_sidenav_menu_click(e: me.ClickEvent):  # pylint: disable=unused-argument
@@ -47,18 +39,15 @@ def on_sidenav_menu_click(e: me.ClickEvent):  # pylint: disable=unused-argument
 def navigate_to(e: me.ClickEvent):
     """navigate to a specific page"""
     s = me.state(AppState)
-    idx = int(e.key)
-    print(f"idx: {idx}")
-
-    page = get_page_by_id(idx)
-    if page is None:
-        print(f"requested {idx}, but couldn't find page with that id.")
-        return
-
-    print(f"navigating to: {page}")
-    s.current_page = page["route"]
-    me.navigate(s.current_page)
+    route_to_navigate = e.key  # The key of the content_button is the route
+    if route_to_navigate:
+        print(f"Navigating to: {route_to_navigate}")
+        s.current_page = route_to_navigate
+        me.navigate(route_to_navigate)
+    else:
+        print("Warning: handle_menu_navigation called with no route in e.key")
     yield
+
 
 def get_page_by_id(page_id):
     """Gets the page object with the given ID.
@@ -75,8 +64,9 @@ def get_page_by_id(page_id):
             return page
     return None
 
+
 @me.component
-def sidenav(current_page: str):
+def sidenav(current_page: Optional[str]):
     """Render side navigation"""
     app_state = me.state(AppState)
     # print(f"received current page: {current_page}")
@@ -86,6 +76,7 @@ def sidenav(current_page: str):
         style=me.Style(
             width=SIDENAV_MAX_WIDTH if app_state.sidenav_open else SIDENAV_MIN_WIDTH,
             background=me.theme_var("secondary-container"),
+            transition="width 0.3s ease-in-out",
         ),
     ):
         with me.box(
@@ -112,15 +103,23 @@ def sidenav(current_page: str):
                         with me.tooltip(message="Expand menu"):
                             me.icon(icon="menu")
                 if app_state.sidenav_open:
-                    me.text("VEO STUDIO", style=_FANCY_TEXT_GRADIENT)
+                    me.text("GENMEDIA STUDIO", style=_FANCY_TEXT_GRADIENT)
             # spacer
             me.box(style=me.Style(height=16))
-            # standard pages
+
+            # Standard pages from WELCOME_PAGE
             for page in page_json:
                 if "align" not in page:  # ignore pages with alignment, handle elsewhere
-                    idx = page["id"]
+                    route = page.get("route")
+                    item_id = f"{page.get('id', '')}_{page.get('display').lower().replace(' ', '_')}"
+                    # idx = page["id"]
+
                     menu_item(
-                        idx, page["icon"], page["display"], not app_state.sidenav_open
+                        item_id=item_id,
+                        icon=page.get("icon"),
+                        text=page.get("display"),
+                        route=route,
+                        minimized=not app_state.sidenav_open,
                     )
             # settings & theme toggle
             with me.box(style=MENU_BOTTOM):
@@ -130,17 +129,29 @@ def sidenav(current_page: str):
                     "Theme",
                     not app_state.sidenav_open,
                 )
-                menu_item(10, "settings", "Settings", not app_state.sidenav_open)
+                menu_item(
+                    item_id=item_id,
+                    icon="settings",
+                    text="Settings",
+                    minimized=not app_state.sidenav_open,
+                    route="/config",
+                )
 
 
 def menu_item(
-    key: int,
+    # key: int,
+    item_id: str,
     icon: str,
     text: str,
+    route: Optional[str],
     minimized: bool = True,
     content_style: me.Style = DEFAULT_MENU_STYLE,
 ):
     """render menu item"""
+
+    is_clickable = bool(route)
+    button_key = route if is_clickable else f"item_{item_id}"
+
     if minimized:  # minimized
         with me.box(
             style=me.Style(
@@ -151,8 +162,8 @@ def menu_item(
             ),
         ):
             with me.content_button(
-                key=str(key),
-                on_click=navigate_to,
+                key=button_key,  # str(key),
+                on_click=navigate_to if is_clickable else None,
                 style=content_style,
                 type="icon",
             ):
@@ -161,9 +172,10 @@ def menu_item(
 
     else:  # expanded
         with me.content_button(
-            key=str(key),
+            key=button_key,  # str(key),
             on_click=navigate_to,
             style=content_style,
+            disabled=not is_clickable,
         ):
             with me.box(
                 style=me.Style(
