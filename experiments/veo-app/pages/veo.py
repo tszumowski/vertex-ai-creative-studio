@@ -244,6 +244,21 @@ def veo_content(app_state: me.state):
                                 )
                             else:
                                 me.image(src=None, style=me.Style(height=200))
+                            with me.box(
+                                style=me.Style(display="flex", flex_direction="row", gap=5)
+                            ):
+                                # me.button(label="Upload", type="flat", disabled=True)
+                                me.uploader(
+                                    label="Upload",
+                                    accepted_file_types=["image/jpeg", "image/png"],
+                                    on_upload=on_click_upload,
+                                    type="raised",
+                                    color="primary",
+                                    style=me.Style(font_weight="bold"),
+                                )
+                                me.button(
+                                    label="Clear", on_click=on_click_clear_reference_image
+                                )
 
             me.box(style=me.Style(height=50))
 
