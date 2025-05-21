@@ -85,7 +85,7 @@ class PageState:
 
 
 def veo_content(app_state: me.state):
-    """Veo 2 Mesop Page"""
+    """Veo Mesop Page"""
     state = me.state(PageState)
 
     with page_scaffold():  # pylint: disable=not-context-manager
@@ -129,6 +129,7 @@ def veo_content(app_state: me.state):
                             ],
                             value=state.aspect_ratio,
                             on_selection_change=on_selection_change_aspect,
+                            disabled=True if state.veo_model == "3.0" else False, # 3.0 only does 16:9
                         )
                         me.select(
                             label="length",
@@ -142,11 +143,13 @@ def veo_content(app_state: me.state):
                             style=me.Style(),
                             value=f"{state.video_length}",
                             on_selection_change=on_selection_change_length,
+                            disabled=True if state.veo_model == "3.0" else False, # 3.0 only does 8 seconds
                         )
                         me.checkbox(
                             label="auto-enhance prompt",
                             checked=state.auto_enhance_prompt,
                             on_change=on_change_auto_enhance_prompt,
+                            disabled=True if state.veo_model == "3.0" else False, # 3.0 no enhance prompt
                         )
                         me.select(
                             label="model",
@@ -298,25 +301,26 @@ def veo_content(app_state: me.state):
                             )
                         ):
                             me.text(state.timing)
-                            me.select(
-                                label="extend",
-                                options=[
-                                    me.SelectOption(label="None", value="0"),
-                                    me.SelectOption(label="4 seconds", value="4"),
-                                    me.SelectOption(label="5 seconds", value="5"),
-                                    me.SelectOption(label="6 seconds", value="6"),
-                                    me.SelectOption(label="7 seconds", value="7"),
-                                ],
-                                appearance="outline",
-                                style=me.Style(),
-                                value=f"{state.video_extend_length}",
-                                on_selection_change=on_selection_change_extend_length,
-                            )
-                            me.button(
-                                label="Extend",
-                                on_click=on_click_extend,
-                                disabled=True if state.video_extend_length == 0 else False,
-                            )
+                            if not state.veo_model == "3.0":
+                                me.select(
+                                    label="extend",
+                                    options=[
+                                        me.SelectOption(label="None", value="0"),
+                                        me.SelectOption(label="4 seconds", value="4"),
+                                        me.SelectOption(label="5 seconds", value="5"),
+                                        me.SelectOption(label="6 seconds", value="6"),
+                                        me.SelectOption(label="7 seconds", value="7"),
+                                    ],
+                                    appearance="outline",
+                                    style=me.Style(),
+                                    value=f"{state.video_extend_length}",
+                                    on_selection_change=on_selection_change_extend_length,
+                                )
+                                me.button(
+                                    label="Extend",
+                                    on_click=on_click_extend,
+                                    disabled=True if state.video_extend_length == 0 else False,
+                                )
                             
 
     with dialog(is_open=state.show_error_dialog):  # pylint: disable=not-context-manager
@@ -439,6 +443,19 @@ def on_selection_change_model(e: me.SelectSelectionChangeEvent):
     """Adjust model based on user event."""
     state = me.state(PageState)
     state.veo_model = e.value
+    # reset to veo 3 settings
+    if state.veo_model == "3.0":
+        # aspect = 16x9 only
+        # length = 8 seconds
+        # t2v only
+        # no auto enhance
+        state.aspect_ratio = "16:9"
+        state.video_length = 8
+        state.veo_mode = "t2v"
+        state.auto_enhance_prompt = False
+
+
+
 
 
 def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
@@ -654,7 +671,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
                 state.reference_image_gcs,
                 rewrite_prompt,
                 error_message=current_error_message,
-                comment="veo2 default generation",
+                comment="veo default generation",
                 last_reference_image=state.last_reference_image_gcs,
             )
         except Exception as meta_err:
