@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" Veo 2 mesop ui page"""
+""" Veo mesop ui page"""
 import time
 
 import mesop as me
@@ -29,7 +29,6 @@ from components.page_scaffold import (
 from config.default import Default
 from models.model_setup import VeoModelSetup
 from models.veo import image_to_video, text_to_video, images_to_video
-from models.veo import image_to_video, text_to_video, images_to_video
 from pages.styles import _BOX_STYLE_CENTER_DISTRIBUTED
 from config.rewriters import VIDEO_REWRITER
 from models.gemini import rewriter
@@ -45,6 +44,7 @@ veo_model = VeoModelSetup.init()
 class PageState:
     """Mesop Page State"""
 
+    veo_model: str = "2.0"
     veo_prompt_input: str = ""
     veo_prompt_placeholder: str = ""
     veo_prompt_textarea_key: int = 0
@@ -90,7 +90,7 @@ def veo_content(app_state: me.state):
 
     with page_scaffold():  # pylint: disable=not-context-manager
         with page_frame():  # pylint: disable=not-context-manager
-            header("Veo 2", "movie")
+            header("Veo", "movie")
 
             # tricolumn
             with me.box(
@@ -148,6 +148,17 @@ def veo_content(app_state: me.state):
                             checked=state.auto_enhance_prompt,
                             on_change=on_change_auto_enhance_prompt,
                         )
+                        me.select(
+                            label="model",
+                            options=[
+                                me.SelectOption(label="Veo 2.0", value="2.0"),
+                                me.SelectOption(label="Veo 3.0", value="3.0"),
+                            ],
+                            appearance="outline",
+                            style=me.Style(),
+                            value=state.veo_model,
+                            on_selection_change=on_selection_change_model,
+                        )
 
                 # Uploaded image
                 with me.box(
@@ -168,6 +179,7 @@ def veo_content(app_state: me.state):
                         multiple=False,
                         hide_selection_indicator=True,
                         on_change=on_selection_change_veo_mode,
+                        disabled=True if state.veo_model == "3.0" else False,
                     )
                     with me.box(style=_BOX_STYLE_CENTER_DISTRIBUTED):
                         if state.veo_mode == "t2v":
@@ -423,6 +435,11 @@ def on_selection_change_aspect(e: me.SelectSelectionChangeEvent):
     state = me.state(PageState)
     state.aspect_ratio = e.value
 
+def on_selection_change_model(e: me.SelectSelectionChangeEvent):
+    """Adjust model based on user event."""
+    state = me.state(PageState)
+    state.veo_model = e.value
+
 
 def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     """Clear prompt and video"""
@@ -436,6 +453,7 @@ def on_click_clear(e: me.ClickEvent):  # pylint: disable=unused-argument
     state.aspect_ratio = "16:9"
     state.is_loading = False
     state.auto_enhance_prompt = False
+    state.veo_model = "2.0"
     yield
 
 def on_click_extend(e: me.ClickEvent):  # pylint: disable=unused-argument
@@ -533,6 +551,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
         else:
             print("T2V invoked.")
             op = text_to_video(
+                state.veo_model,
                 state.veo_prompt_input,
                 seed,
                 aspect_ratio,
@@ -629,7 +648,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
                 gcs_uri,
                 state.veo_prompt_input,
                 aspect_ratio,
-                veo_model,
+                state.veo_model,
                 execution_time,
                 state.video_length,
                 state.reference_image_gcs,
