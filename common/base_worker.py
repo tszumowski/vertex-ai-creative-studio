@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
 
 class BaseWorker(abc.ABC):
+
     def __init__(
         self,
         settings: settings_lib.Settings,
@@ -45,7 +46,7 @@ class BaseWorker(abc.ABC):
         self.tadau_client = tadau_lib.Tadau(
             api_secret="DV9DIB-zThOVZBOMB0oFUg",
             measurement_id="G-M99NE04QRK",
-            opt_in=True,
+            opt_in=False,
             fixed_dimensions={
                 "deploy_id": f"genmedia_studio_{os.environ.get('PROJECT_ID')}",
                 "deploy_infra": cloud_detect.provider(),

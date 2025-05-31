@@ -60,7 +60,7 @@ async def process_request(
     """
     request_body = await request.json()
     logging.info("API Gateway: Received request: %s", request_body)
-    response = await api_utils.make_authenticated_request_with_handled_exception(
+    response = await api_utils.make_async_request(
         method=method,
         url=f"{service_url}/{endpoint}",
         json_data=request_body,

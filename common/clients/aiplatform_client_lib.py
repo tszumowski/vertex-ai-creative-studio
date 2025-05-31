@@ -24,12 +24,13 @@ import google.auth
 import requests
 from absl import logging
 from google.cloud import aiplatform
-from tenacity import retry, stop_after_attempt, wait_exponential
+
 from vertexai.preview.vision_models import Image
 
 from common.clients import storage_client_lib
 from common.models.edit_mode import EditMode
 from common.models.edit_params import EditParams
+from common.utils import api_utils
 
 AIPLATFORM_REGIONAL_ENDPOINT = "{region}-aiplatform.googleapis.com"
 VIDEO_GENERATION_ENDPOINT = (
@@ -210,7 +211,7 @@ class AIPlatformClient:
                     "includeRaiReason": "true",
                 },
             }
-            response = self._send_request_to_google_api(
+            response = api_utils.make_request(
                 image_editing_endpoint,
                 req,
             )
@@ -235,44 +236,6 @@ class AIPlatformClient:
             raise AIPlatformClientError("Could not edit image: %s", ex) from ex
         return results
 
-    @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=3, min=1, max=30),
-    )
-    def _send_request_to_google_api(
-        self,
-        api_endpoint: str,
-        data: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Sends an HTTP request to a Google API endpoint.
-
-        Args:
-            api_endpoint: The URL of the Google API endpoint.
-            data: (Optional) Dictionary of data to send in the request body.
-
-        Returns:
-            The response from the Google API.
-        """
-        # Get access token calling API
-        creds, _ = google.auth.default()
-        auth_req = google.auth.transport.requests.Request()
-        creds.refresh(auth_req)
-        access_token = creds.token
-
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json",
-        }
-
-        response = requests.post(
-            url=api_endpoint,
-            headers=headers,
-            json=data,
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response.json()
-
     def _poll_video_operation(
         self,
         video_fetch_endpoint: str,
@@ -290,7 +253,7 @@ class AIPlatformClient:
         request = {"operationName": lro_name}
         # The generation usually takes 2 minutes. Loop 30 times, around 5 minutes.
         for _ in range(30):
-            resp = self._send_request_to_google_api(video_fetch_endpoint, request)
+            resp = api_utils.make_request(video_fetch_endpoint, request)
             if resp.get("done"):
                 return resp
             time.sleep(10)

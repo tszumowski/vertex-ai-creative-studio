@@ -22,8 +22,14 @@ from typing import Any
 import aiohttp
 import google.auth.transport.requests
 import google.oauth2.id_token
+import requests
 from absl import logging
 from fastapi import HTTPException
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 
 def get_id_token(audience: str) -> str:
@@ -57,7 +63,32 @@ async def handle_exceptions(e: Exception) -> HTTPException:
     ) from e
 
 
-async def make_authenticated_request_with_handled_exception(
+async def handle_async_exceptions(e: Exception) -> HTTPException:
+    """Handles exceptions that may occur during image generation."""
+    if isinstance(e, aiohttp.ClientResponseError):
+        raise HTTPException(
+            status_code=e.status,
+            detail=f"Service error: {e.message}",
+        ) from e
+    if isinstance(e, aiohttp.ClientConnectionError):
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not connect to the service: {e}",
+        ) from e
+    if isinstance(e, aiohttp.ClientError):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error communicating with the service: {e}",
+        ) from e
+    # Handle other unexpected exceptions
+    logging.exception("Error when making authenticated request: %s", e)
+    raise HTTPException(
+        status_code=500,
+        detail=f"An unexpected error occurred: {e}",
+    ) from e
+
+
+async def make_async_request(
     method: str,
     url: str,
     json_data: dict[str, Any] | None = None,
@@ -93,7 +124,7 @@ async def make_authenticated_request_with_handled_exception(
                 await response.read()
                 return response
     except Exception as e:
-        raise await handle_exceptions(e) from e
+        raise await handle_async_exceptions(e) from e
 
 
 def stringify_values(data: dict[str, Any]) -> dict[str, str]:
@@ -105,3 +136,44 @@ def stringify_values(data: dict[str, Any]) -> dict[str, str]:
         elif isinstance(value, (dict, list, tuple)):
             new_dict[key] = json.dumps(value)
     return new_dict
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=3, min=1, max=30),
+)
+def make_request(
+    api_endpoint: str,
+    data: dict[str, Any],
+) -> dict[str, Any]:
+    """Sends an HTTP request to a Google API endpoint.
+
+    Args:
+        api_endpoint: The URL of the Google API endpoint.
+        data: (Optional) Dictionary of data to send in the request body.
+
+    Returns:
+        The response from the Google API.
+    """
+    # Get access token calling API
+    try:
+        creds, _ = google.auth.default()
+        auth_req = google.auth.transport.requests.Request()
+        creds.refresh(auth_req)
+        access_token = creds.token
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.post(
+            url=api_endpoint,
+            headers=headers,
+            json=data,
+            timeout=30,
+        )
+        response.raise_for_status()
+    except Exception as ex:
+        raise handle_exceptions(ex) from ex
+    return response.json()
