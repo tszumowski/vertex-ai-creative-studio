@@ -60,6 +60,8 @@ class MediaItem:
     last_reference_image: Optional[str] = None  # GCS URI for I2V interpolation end frame
     enhanced_prompt_used: Optional[bool] = None # For Veo's auto-enhance prompt feature
     comment: Optional[str] = None # General comment field, e.g., for video generation type
+    original_video_id: Optional[str] = None
+    original_video_gcsuri: Optional[str] = None
 
     # Image specific
     # aspect is shared with Video
@@ -205,6 +207,12 @@ def get_media_item_by_id(
                 else None,
                 critique=str(raw_item_data.get("critique"))
                 if raw_item_data.get("critique") is not None
+                else None,
+                original_video_id=str(raw_item_data.get("original_video_id"))
+                if raw_item_data.get("original_video_id") is not None
+                else None,
+                original_video_gcsuri=str(raw_item_data.get("original_video_gcsuri"))
+                if raw_item_data.get("original_video_gcsuri") is not None
                 else None,
                 raw_data=raw_item_data,
             )

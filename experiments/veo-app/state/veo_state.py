@@ -44,4 +44,5 @@ class PageState:
     show_error_dialog: bool = False
     error_message: str = ""
     result_video: str
+    result_video_firestore_id: str | None = None
     timing: str

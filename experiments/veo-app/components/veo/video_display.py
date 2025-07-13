@@ -18,7 +18,7 @@ from state.veo_state import PageState
 
 
 @me.component
-def video_display():
+def video_display(on_click_extend: me.event_handler_fn):
     """Display the generated video"""
     state = me.state(PageState)
     with me.box(
@@ -51,26 +51,25 @@ def video_display():
                     )
                 ):
                     me.text(state.timing)
-                    if not state.veo_model == "3.0":
-                        me.select(
-                            label="extend",
-                            options=[
-                                me.SelectOption(label="None", value="0"),
-                                me.SelectOption(label="4 seconds", value="4"),
-                                me.SelectOption(label="5 seconds", value="5"),
-                                me.SelectOption(label="6 seconds", value="6"),
-                                me.SelectOption(label="7 seconds", value="7"),
-                            ],
-                            appearance="outline",
-                            style=me.Style(),
-                            value=f"{state.video_extend_length}",
-                            on_selection_change=on_selection_change_extend_length,
-                        )
-                        me.button(
-                            label="Extend",
-                            on_click=on_click_extend,
-                            disabled=True if state.video_extend_length == 0 else False,
-                        )
+                    me.select(
+                        label="extend",
+                        options=[
+                            me.SelectOption(label="None", value="0"),
+                            me.SelectOption(label="4 seconds", value="4"),
+                            me.SelectOption(label="5 seconds", value="5"),
+                            me.SelectOption(label="6 seconds", value="6"),
+                            me.SelectOption(label="7 seconds", value="7"),
+                        ],
+                        appearance="outline",
+                        style=me.Style(),
+                        value=f"{state.video_extend_length}",
+                        on_selection_change=on_selection_change_extend_length,
+                    )
+                    me.button(
+                        label="Extend (no audio)" if state.veo_model.startswith("3.") else "Extend",
+                        on_click=on_click_extend,
+                        disabled=True if state.video_extend_length == 0 else False,
+                    )
 
 
 def on_selection_change_extend_length(e: me.SelectSelectionChangeEvent):
@@ -79,10 +78,4 @@ def on_selection_change_extend_length(e: me.SelectSelectionChangeEvent):
     state.video_extend_length = int(e.value)
 
 
-def on_click_extend(e: me.ClickEvent):
-    """Extend video"""
-    state = me.state(PageState)
-    print(
-        f"You would like to extend {state.result_video} by {state.video_extend_length} seconds."
-    )
-    print(f"Continue the scene {state.veo_prompt_input} ...")
+

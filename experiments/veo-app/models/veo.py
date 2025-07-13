@@ -32,7 +32,7 @@ client = genai.Client(
     vertexai=True, project=config.VEO_PROJECT_ID, location=config.LOCATION
 )
 
-def generate_video(state):
+def generate_video(state, extend_video_uri: str | None = None):
     """
     Generates a video based on the current state using the genai SDK.
     This function handles text-to-video, image-to-video, and interpolation by
@@ -50,15 +50,20 @@ def generate_video(state):
     gen_config_args = {
         "aspect_ratio": state.aspect_ratio,
         "number_of_videos": 1,
-        "duration_seconds": state.video_length,
+        "duration_seconds": state.video_extend_length if extend_video_uri else state.video_length,
         "enhance_prompt": enhance_prompt,
         "output_gcs_uri": f"gs://{config.VIDEO_BUCKET}",
     }
 
     # --- Prepare Image and Video Inputs ---
     image_input = None
+    video_input = None
+
+    if extend_video_uri:
+        print(f"Mode: Extend Video from {extend_video_uri}")
+        video_input = types.Video(uri=extend_video_uri)
     # Check for interpolation (first and last frame)
-    if getattr(state, "reference_image_gcs", None) and getattr(
+    elif getattr(state, "reference_image_gcs", None) and getattr(
         state, "last_reference_image_gcs", None
     ):
         print("Mode: Interpolation")
@@ -90,6 +95,7 @@ def generate_video(state):
             prompt=state.veo_prompt_input,
             config=gen_config,
             image=image_input,
+            video=video_input,
         )
 
         print("Polling video generation operation...")

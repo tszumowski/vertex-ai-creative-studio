@@ -65,7 +65,7 @@ def veo_content(app_state: me.state):
 
             me.box(style=me.Style(height=50))
 
-            video_display()
+            video_display(on_click_extend=on_click_extend)
 
     with dialog(is_open=state.show_error_dialog):  # pylint: disable=not-context-manager
         me.text(
@@ -173,6 +173,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
 
         try:
             add_media_item_to_firestore(item_to_log)
+            state.result_video_firestore_id = item_to_log.id
         except Exception as meta_err:
             print(f"CRITICAL: Failed to store metadata: {meta_err}")
             # If dialog isn't already shown for a generation error, show for metadata error
@@ -183,6 +184,69 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
 
     state.is_loading = False
     yield
+
+
+def on_click_extend(e: me.ClickEvent):
+    """Extend video."""
+    app_state = me.state(AppState)
+    state = me.state(PageState)
+
+    state.is_loading = True
+    state.show_error_dialog = False
+    state.error_message = ""
+    yield
+
+    start_time = time.time()
+    gcs_uri = ""
+    item_to_log = MediaItem(
+        user_email=app_state.user_email,
+        timestamp=datetime.datetime.now(datetime.timezone.utc),
+        prompt=state.veo_prompt_input,
+        original_prompt=state.veo_prompt_input,
+        model=(config.VEO_EXP_MODEL_ID if state.veo_model == "3.0" else config.VEO_EXP_FAST_MODEL_ID if state.veo_model == "3.0-fast" else config.VEO_MODEL_ID),
+        mime_type="video/mp4",
+        aspect=state.aspect_ratio,
+        duration=float(state.video_extend_length),
+        enhanced_prompt_used=state.auto_enhance_prompt,
+        comment="veo extended generation",
+        original_video_id=state.result_video_firestore_id,
+        original_video_gcsuri=state.result_video,
+    )
+
+    try:
+        gcs_uri = generate_video(state, extend_video_uri=state.result_video)
+        state.result_video = gcs_uri
+        item_to_log.gcsuri = gcs_uri if gcs_uri else None
+
+    except GenerationError as ge:
+        state.error_message = ge.message
+        state.show_error_dialog = True
+        state.result_video = ""
+        item_to_log.error_message = ge.message
+    except Exception as ex:
+        state.error_message = f"An unexpected error occurred during video extension: {str(ex)}"
+        state.show_error_dialog = True
+        state.result_video = ""
+        item_to_log.error_message = state.error_message
+
+    finally:
+        end_time = time.time()
+        execution_time = end_time - start_time
+        state.timing = f"Generation time: {round(execution_time)} seconds"
+        item_to_log.generation_time = execution_time
+
+        try:
+            add_media_item_to_firestore(item_to_log)
+            state.result_video_firestore_id = item_to_log.id
+        except Exception as meta_err:
+            print(f"CRITICAL: Failed to store metadata for extended video: {meta_err}")
+            if not state.show_error_dialog:
+                state.error_message = f"Failed to store extended video metadata: {meta_err}"
+                state.show_error_dialog = True
+
+    state.is_loading = False
+    yield
+
 
 
 def on_blur_veo_prompt(e: me.InputBlurEvent):
@@ -285,7 +349,7 @@ def on_upload_last_image(e: me.UploadEvent):
     try:
         # Store the uploaded file to GCS
         gcs_path = store_to_gcs(
-            "uploads", e.file.name, e.file.mime_type, e.file.getvalue()
+            "uploads", e.file.name, e.file.mime_type, e.file.getvalue(),
         )
         # Update the state with the new image details
         state.last_reference_image_gcs = gcs_path
@@ -298,22 +362,22 @@ def on_upload_last_image(e: me.UploadEvent):
         state.show_error_dialog = True
     yield
 
-def on_upload_image(e: me.UploadEvent):
-    """Upload image to GCS and update state."""
-    state = me.state(PageState)
-    try:
-        # Store the uploaded file to GCS
-        gcs_path = store_to_gcs(
-            "uploads", e.file.name, e.file.mime_type, e.file.getvalue()
-        )
-        # Update the state with the new image details
-        state.reference_image_gcs = gcs_path
-        state.reference_image_uri = gcs_path.replace(
-            "gs://", "https://storage.mtls.cloud.google.com/"
-        )
-        state.reference_image_mime_type = e.file.mime_type
-        print(f"Image uploaded to {gcs_path} with mime type {e.file.mime_type}")
-    except Exception as ex:
-        state.error_message = f"Failed to upload image: {ex}"
-        state.show_error_dialog = True
-    yield
+# def on_upload_image(e: me.UploadEvent):
+#     """Upload image to GCS and update state."""
+#     state = me.state(PageState)
+#     try:
+#         # Store the uploaded file to GCS
+#         gcs_path = store_to_gcs(
+#             "uploads", e.file.name, e.file.mime_type, e.file.getvalue()
+#         )
+#         # Update the state with the new image details
+#         state.reference_image_gcs = gcs_path
+#         state.reference_image_uri = gcs_path.replace(
+#             "gs://", "https://storage.mtls.cloud.google.com/"
+#         )
+#         state.reference_image_mime_type = e.file.mime_type
+#         print(f"Image uploaded to {gcs_path} with mime type {e.file.mime_type}")
+#     except Exception as ex:
+#         state.error_message = f"Failed to upload image: {ex}"
+#         state.show_error_dialog = True
+#     yield
