@@ -52,6 +52,7 @@ def character_consistency_page_content():
                 me.uploader(
                     label="Upload Reference Images",
                     on_upload=on_upload,
+                    accepted_file_types=["image/jpeg", "image/png"],
                     multiple=True,
                     style=me.Style(width="100%"),
                 )
