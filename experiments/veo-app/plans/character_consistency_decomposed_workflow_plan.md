@@ -42,7 +42,51 @@ class WorkflowStepResult:
 **Task 4: Update the UI (`pages/character_consistency.py`)**
 1.  Add a new `me.text` component to display the final `total_generation_time`.
 
-### 3. Validation and Testing Plan
+```
+
+### 4. Workflow Visualization
+
+Here is a step-by-step breakdown of the entire workflow, formatted for clarity.
+
+---
+
+**➡️ Step 1: Download Reference Images**
+*   **Action:** The system receives a list of GCS URIs pointing to the images the user uploaded. It downloads the image data (bytes) for each URI in parallel.
+*   **Yields:** A status message confirming the download is complete.
+
+**➡️ Step 2: Generate Character Description**
+*   **Action:** The image bytes for each reference photo are sent to the **Gemini 2.5 Pro** model.
+    1.  **Forensic Analysis:** Gemini analyzes each image to extract a structured `FacialCompositeProfile` (face shape, eye color, etc.).
+    2.  **Natural Language Translation:** The structured profile is then used to generate a concise, natural-language paragraph describing the person's key features.
+*   **Yields:** The final character description (derived from the first image).
+
+**➡️ Step 3: Generate Scene Prompt**
+*   **Action:** The character description from Step 2 and the user's original scene prompt are sent to **Gemini 2.5 Pro**. It is tasked with creating a detailed, photorealistic prompt suitable for Imagen, including a standard negative prompt.
+*   **Yields:** The final Imagen prompt and the negative prompt.
+
+**➡️ Step 4: Generate Candidate Images**
+*   **Action:** The system calls the **Imagen 3.0** model. It provides the prompt from Step 3 along with all the original reference images (using `SubjectReferenceImage`) to ensure the generated person is consistent with the source photos.
+*   **Yields:** A list of GCS URIs for the newly generated candidate images.
+
+**➡️ Step 5: Select Best Image**
+*   **Action:** The original reference images and the new candidate images are all sent to **Gemini 2.5 Pro**. It is tasked with comparing them and selecting the single candidate image that has the highest facial likeness to the person in the original photos.
+*   **Yields:** The GCS URI of the single best candidate image.
+
+**➡️ Step 6: Outpaint Best Image**
+*   **Action:** The system takes the single best image from Step 5 and sends it to **Imagen 3.0** for outpainting. This extends the image from a 1:1 aspect ratio to a cinematic 16:9 ratio, creating a wider scene for the video.
+*   **Yields:** The GCS URI of the final, outpainted image.
+
+**➡️ Step 7: Generate Final Video**
+*   **Action:** The outpainted image from Step 6 is sent to the **Veo 3.0** model to be animated into a short video clip.
+*   **Yields:** The GCS URI of the final generated video.
+
+**➡️ Step 8: Persist Metadata**
+*   **Action:** A final `MediaItem` object is created, containing all the artifacts generated throughout the workflow (all GCS URIs, all prompts, timings, etc.). This object is saved as a single document in Firestore.
+*   **This is the final step.** The workflow is now complete.
+
+---
+
+### 5. Validation and Testing Plan
 
 **A. Functional Testing (New Feature)**
 
