@@ -396,7 +396,7 @@ def get_facial_composite_profile(image_bytes: bytes) -> FacialCompositeProfile:
     profile_config = types.GenerateContentConfig(
         response_mime_type="application/json",
         response_schema=FacialCompositeProfile.model_json_schema(),
-        temperature=0.1,
+        temperature=cfg.TEMP_FORENSIC_ANALYSIS,
     )
     profile_prompt_parts = [
         "You are a forensic analyst. Analyze the following image and extract a detailed, structured facial profile.",
@@ -418,7 +418,7 @@ def get_natural_language_description(profile: FacialCompositeProfile) -> str:
     """Generates a natural language description from a facial profile."""
     model_name = cfg.CHARACTER_CONSISTENCY_GEMINI_MODEL
 
-    description_config = types.GenerateContentConfig(temperature=0.1)
+    description_config = types.GenerateContentConfig(temperature=cfg.TEMP_DESCRIPTION_TRANSLATION)
     description_prompt = f"""
     Based on the following structured JSON data of a person's facial features, write a concise, natural language description suitable for an image generation model. Focus on key physical traits.
 

@@ -119,7 +119,7 @@ def character_consistency_page_content():
 
             with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, justify_content="center")):
                 if state.best_image_url:
-                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=12, justify_content="center")):
+                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=4, justify_content="center")):
                         me.text("Best Image", type="headline-5")
                         me.image(
                             src=state.best_image_url,
@@ -128,7 +128,7 @@ def character_consistency_page_content():
                         )
 
                 if state.outpainted_image_url:
-                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=12, justify_content="center")):
+                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=4, justify_content="center")):
                         me.text("Outpainted Image", type="headline-5")
                         me.image(
                             src=state.outpainted_image_url,
