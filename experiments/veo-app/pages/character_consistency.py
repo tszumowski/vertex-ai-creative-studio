@@ -119,27 +119,30 @@ def character_consistency_page_content():
 
             with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, justify_content="center")):
                 if state.best_image_url:
-                    me.text("Best Image", type="headline-5")
-                    me.image(
-                        src=state.best_image_url,
-                        style=me.Style(width=400, height=400, object_fit="contain", border_radius="12px",
-                                box_shadow="0 2px 4px rgba(0,0,0,0.1)",),
-                    )
+                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=12, justify_content="center")):
+                        me.text("Best Image", type="headline-5")
+                        me.image(
+                            src=state.best_image_url,
+                            style=me.Style(width=400, height=400, object_fit="contain", border_radius="12px",
+                                    box_shadow="0 2px 4px rgba(0,0,0,0.1)",),
+                        )
 
                 if state.outpainted_image_url:
-                    me.text("Outpainted Image", type="headline-5")
-                    me.image(
-                        src=state.outpainted_image_url,
-                        style=me.Style(width=600, height=338, object_fit="contain", border_radius="12px",
-                                box_shadow="0 2px 4px rgba(0,0,0,0.1)",),
-                    )
+                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=12, justify_content="center")):
+                        me.text("Outpainted Image", type="headline-5")
+                        me.image(
+                            src=state.outpainted_image_url,
+                            style=me.Style(width=600, height=338, object_fit="contain", border_radius="12px",
+                                    box_shadow="0 2px 4px rgba(0,0,0,0.1)",),
+                        )
 
             with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, justify_content="center")):
                 if state.final_video_url:
-                    me.text("Final Video", type="headline-5")
-                    me.video(
-                        src=state.final_video_url, style=me.Style(width=600, height=338)
-                    )
+                    with me.box(style=me.Style(display="flex", flex_direction="column", gap=12, justify_content="center")):
+                        me.text("Final Video", type="headline-5")
+                        me.video(
+                            src=state.final_video_url, style=me.Style(width=600, height=338)
+                        )
 
 def on_upload(e: me.UploadEvent):
     """Handle image uploads."""

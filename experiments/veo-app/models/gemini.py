@@ -493,7 +493,7 @@ def select_best_image(
         thinking_config=types.ThinkingConfig(thinking_budget=-1),
         response_mime_type="application/json",
         response_schema=BestImage.model_json_schema(),
-        temperature=0.2,
+        temperature=cfg.TEMP_BEST_IMAGE_SELECTION,
     )
 
     prompt_parts = [

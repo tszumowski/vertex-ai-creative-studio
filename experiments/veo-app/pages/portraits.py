@@ -17,13 +17,6 @@ import time
 from dataclasses import field
 
 import mesop as me
-from common.metadata import MediaItem, add_media_item_to_firestore
-from common.storage import store_to_gcs
-from components.header import header
-from components.page_scaffold import (
-    page_frame,
-    page_scaffold,
-)
 from google.genai import types
 from google.genai.types import GenerateContentConfig
 from tenacity import (
@@ -33,16 +26,23 @@ from tenacity import (
     wait_exponential,
 )
 
+from common.metadata import MediaItem, add_media_item_to_firestore
+from common.storage import store_to_gcs
+from components.header import header
+from components.library.events import LibrarySelectionChangeEvent
+from components.library.library_chooser_button import library_chooser_button
+from components.page_scaffold import (
+    page_frame,
+    page_scaffold,
+)
 from config.default import Default
 from models.model_setup import GeminiModelSetup, VeoModelSetup
-from models.veo import generate_video, VideoGenerationRequest
-from components.library.library_chooser_button import library_chooser_button
-from components.library.events import LibrarySelectionChangeEvent
-from state.state import AppState
+from models.veo import VideoGenerationRequest, generate_video
 from pages.styles import (
     _BOX_STYLE_CENTER_DISTRIBUTED,
     _BOX_STYLE_CENTER_DISTRIBUTED_MARGIN,
 )
+from state.state import AppState
 
 client = GeminiModelSetup.init()
 
@@ -78,8 +78,8 @@ class PageState:
     reference_image_mime_type: str = ""
 
     # Style modifiers
-    modifier_array: list[str] = field(default_factory=list)
-    modifier_selected_states: dict[str, bool] = field(default_factory=dict)
+    modifier_array: list[str] = field(default_factory=list)  # pylint: disable=invalid-field-call
+    modifier_selected_states: dict[str, bool] = field(default_factory=dict)  # pylint: disable=invalid-field-call
 
 
 modifier_options = [

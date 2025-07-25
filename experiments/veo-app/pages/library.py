@@ -206,7 +206,9 @@ def get_media_for_page(
                 media_type=str(raw_item_data.get("media_type"))
                 if raw_item_data.get("media_type") is not None
                 else None,
-                source_character_images=raw_item_data.get("source_character_images", []),
+                source_character_images=raw_item_data.get(
+                    "source_character_images", []
+                ),
                 character_description=str(raw_item_data.get("character_description"))
                 if raw_item_data.get("character_description") is not None
                 else None,
@@ -777,7 +779,10 @@ def library_content(app_state: me.state):
                                 else ""
                             )
                         )
-                        if item.media_type == "character_consistency" and item.best_candidate_image:
+                        if (
+                            item.media_type == "character_consistency"
+                            and item.best_candidate_image
+                        ):
                             me.video(
                                 src=item_display_url,
                                 style=me.Style(
@@ -899,7 +904,6 @@ def library_content(app_state: me.state):
                             me.text(f"Resolution: {item.resolution or '720p'}")
 
                         if dialog_media_type_group == "video":
-                            print(f"video: {item}")
                             if item.reference_image:
                                 ref_url = item.reference_image.replace(
                                     "gs://", "https://storage.mtls.cloud.google.com/"
@@ -941,7 +945,10 @@ def library_content(app_state: me.state):
                                         margin=me.Margin(top=4),
                                     ),
                                 )
-                        elif item.media_type == "character_consistency" and item.best_candidate_image:
+                        elif (
+                            item.media_type == "character_consistency"
+                            and item.best_candidate_image
+                        ):
                             print("I'm in character consistency")
                             best_candidate_url = item.best_candidate_image.replace(
                                 "gs://", "https://storage.mtls.cloud.google.com/"
@@ -961,6 +968,34 @@ def library_content(app_state: me.state):
                                     margin=me.Margin(top=4),
                                 ),
                             )
+                            if item.source_character_images:
+                                me.text(
+                                    "Source Images:",
+                                    style=me.Style(
+                                        font_weight="500", margin=me.Margin(top=8)
+                                    ),
+                                )
+                                with me.box(
+                                    style=me.Style(
+                                        display="flex", flex_direction="row", gap=10
+                                    )
+                                ):
+                                    for src_image_uri in item.source_character_images[
+                                        :3
+                                    ]:
+                                        src_url = src_image_uri.replace(
+                                            "gs://",
+                                            "https://storage.mtls.cloud.google.com/",
+                                        )
+                                        me.image(
+                                            src=src_url,
+                                            style=me.Style(
+                                                max_width="150px",
+                                                height="auto",
+                                                border_radius=6,
+                                                margin=me.Margin(top=4),
+                                            ),
+                                        )
 
                         with me.content_button(
                             on_click=on_click_set_permalink,
