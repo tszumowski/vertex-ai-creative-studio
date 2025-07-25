@@ -448,7 +448,7 @@ def generate_final_scene_prompt(
     config = types.GenerateContentConfig(
         response_mime_type="application/json",
         response_schema=GeneratedPrompts.model_json_schema(),
-        temperature=0.3,
+        temperature=cfg.TEMP_SCENE_GENERATION,
     )
 
     meta_prompt = f"""
