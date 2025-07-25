@@ -31,12 +31,13 @@ class PageState:
 
     uploaded_image_gcs_uris: list[str] = field(default_factory=list)  # pylint: disable=invalid-field-call
     scene_prompt: str = ""
-    candidate_image_urls: list[str] = field(default_factory=list)  # pylint: disable=invalid-field-call
+    candidate_image_urls: list[str] = field(default_factory=list) # pylint: disable=invalid-field-call
     best_image_url: str = ""
     outpainted_image_url: str = ""
     final_video_url: str = ""
     status_message: str = "Ready."
     is_generating: bool = False
+    total_generation_time: float = 0.0
 
 
 def character_consistency_page_content():
@@ -73,17 +74,27 @@ def character_consistency_page_content():
                 style=me.Style(width="100%"),
             )
 
-            me.button(
-                "Generate",
-                on_click=on_generate_click,
-                disabled=state.is_generating,
-                style=me.Style(margin=me.Margin.symmetric(vertical=20)),
-            )
+            with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, justify_content="center")):
+                me.button(
+                    "Generate",
+                    on_click=on_generate_click,
+                    disabled=state.is_generating,
+                    type="flat",
+                )
+                me.button(
+                    "Clear",
+                    on_click=on_clear,
+                    disabled=state.is_generating,
+                    type="stroked",
+                )
 
             me.text(
                 state.status_message,
                 style=me.Style(margin=me.Margin.symmetric(vertical=10)),
             )
+
+            if state.total_generation_time > 0:
+                me.text(f"Total generation time: {state.total_generation_time:.2f} seconds")
 
             if state.candidate_image_urls:
                 me.text("Candidate Images", type="headline-5")
@@ -106,26 +117,29 @@ def character_consistency_page_content():
                             ),
                         )
 
-            if state.best_image_url:
-                me.text("Best Image", type="headline-5")
-                me.image(
-                    src=state.best_image_url,
-                    style=me.Style(width=400, height=400, object_fit="contain"),
-                )
+            with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, justify_content="center")):
+                if state.best_image_url:
+                    me.text("Best Image", type="headline-5")
+                    me.image(
+                        src=state.best_image_url,
+                        style=me.Style(width=400, height=400, object_fit="contain", border_radius="12px",
+                                box_shadow="0 2px 4px rgba(0,0,0,0.1)",),
+                    )
 
-            if state.outpainted_image_url:
-                me.text("Outpainted Image", type="headline-5")
-                me.image(
-                    src=state.outpainted_image_url,
-                    style=me.Style(width=600, height=338, object_fit="contain"),
-                )
+                if state.outpainted_image_url:
+                    me.text("Outpainted Image", type="headline-5")
+                    me.image(
+                        src=state.outpainted_image_url,
+                        style=me.Style(width=600, height=338, object_fit="contain", border_radius="12px",
+                                box_shadow="0 2px 4px rgba(0,0,0,0.1)",),
+                    )
 
-            if state.final_video_url:
-                me.text("Final Video", type="headline-5")
-                me.video(
-                    src=state.final_video_url, style=me.Style(width=600, height=338)
-                )
-
+            with me.box(style=me.Style(display="flex", flex_direction="row", gap=16, justify_content="center")):
+                if state.final_video_url:
+                    me.text("Final Video", type="headline-5")
+                    me.video(
+                        src=state.final_video_url, style=me.Style(width=600, height=338)
+                    )
 
 def on_upload(e: me.UploadEvent):
     """Handle image uploads."""
@@ -146,38 +160,58 @@ def on_prompt_input(e: me.InputEvent):
     state = me.state(PageState)
     state.scene_prompt = e.value
 
-
 def on_generate_click(e: me.ClickEvent):
     """Handle generate button click."""
     state = me.state(PageState)
     app_state = me.state(AppState)
     state.is_generating = True
-    state.status_message = "Generating..."
+    state.total_generation_time = 0.0
+    state.candidate_image_urls = []
+    state.best_image_url = ""
+    state.outpainted_image_url = ""
+    state.final_video_url = ""
     yield
 
     try:
-        media_item_id = generate_character_video(
+        for step_result in generate_character_video(
             user_email=app_state.user_email,
             reference_image_gcs_uris=state.uploaded_image_gcs_uris,
             scene_prompt=state.scene_prompt,
-        )
-        media_item = get_media_item_by_id(media_item_id)
-        if media_item:
-            state.candidate_image_urls = [
-                f"https://storage.mtls.cloud.google.com/{gcs_uri.replace('gs://', '')}"
-                for gcs_uri in media_item.candidate_images
-            ]
-            state.best_image_url = f"https://storage.mtls.cloud.google.com/{media_item.best_candidate_image.replace('gs://', '')}"
-            state.outpainted_image_url = f"https://storage.mtls.cloud.google.com/{media_item.outpainted_image.replace('gs://', '')}"
-            state.final_video_url = f"https://storage.mtls.cloud.google.com/{media_item.gcsuri.replace('gs://', '')}"
-            state.status_message = "Successfully generated video!"
-        else:
-            state.status_message = (
-                f"Error: Could not retrieve generated media with ID: {media_item_id}"
-            )
+        ):
+            state.status_message = step_result.message
+            state.total_generation_time += step_result.duration_seconds
+            if step_result.data:
+                if "candidate_image_gcs_uris" in step_result.data:
+                    state.candidate_image_urls = [
+                        uri.replace("gs://", "https://storage.mtls.cloud.google.com/")
+                        for uri in step_result.data["candidate_image_gcs_uris"]
+                    ]
+                if "best_image_gcs_uri" in step_result.data:
+                    state.best_image_url = step_result.data["best_image_gcs_uri"].replace("gs://", "https://storage.mtls.cloud.google.com/")
+                if "outpainted_image_gcs_uri" in step_result.data:
+                    state.outpainted_image_url = step_result.data["outpainted_image_gcs_uri"].replace("gs://", "https://storage.mtls.cloud.google.com/")
+                if "video_gcs_uri" in step_result.data:
+                    state.final_video_url = step_result.data["video_gcs_uri"].replace("gs://", "https://storage.mtls.cloud.google.com/")
+            yield
+
+        state.status_message = f"Workflow complete! Total time: {state.total_generation_time:.2f} seconds"
 
     except Exception as e:
         state.status_message = f"Error: {e}"
 
     state.is_generating = False
+    yield
+
+def on_clear(e: me.ClickEvent):
+    """Clear the state of the page."""
+    state = me.state(PageState)
+    state.uploaded_image_gcs_uris = []
+    state.scene_prompt = ""
+    state.candidate_image_urls = []
+    state.best_image_url = ""
+    state.outpainted_image_url = ""
+    state.final_video_url = ""
+    state.status_message = "Ready."
+    state.is_generating = False
+    state.total_generation_time = 0.0
     yield

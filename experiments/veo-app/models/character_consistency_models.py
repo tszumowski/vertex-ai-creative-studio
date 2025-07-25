@@ -38,3 +38,11 @@ class BestImage(BaseModel):
     """Pydantic model for the best image selection."""
     best_image_path: str
     reasoning: str
+
+class WorkflowStepResult(BaseModel):
+    """Represents the result of a single step in the workflow."""
+    step_name: str
+    status: str
+    message: str
+    duration_seconds: float
+    data: dict

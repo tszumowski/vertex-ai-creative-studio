@@ -16,6 +16,7 @@ import concurrent.futures
 import io
 import logging
 import uuid
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -36,52 +37,106 @@ from models.gemini import (
     generate_final_scene_prompt,
     select_best_image,
 )
+from .character_consistency_models import (
+    BestImage,
+    FacialCompositeProfile,
+    GeneratedPrompts,
+    WorkflowStepResult,
+)
 
 cfg = Default()
 
+from typing import Generator
+
 def generate_character_video(
     user_email: str, reference_image_gcs_uris: list[str], scene_prompt: str
-) -> str:  # Returns the ID of the new MediaItem in Firestore
+) -> Generator[WorkflowStepResult, None, None]:
     """
-    Orchestrates the entire character consistency workflow.
+    Orchestrates the entire character consistency workflow as a generator,
+    yielding the result of each step.
     """
+    total_start_time = time.time()
     logger.info("Starting character consistency workflow for user: %s", user_email)
 
-    # 1. Download image bytes from GCS
-    logger.info("Step 1: Downloading %d reference images from GCS...", len(reference_image_gcs_uris))
+    # Step 1: Download image bytes from GCS
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="download_images",
+        status="processing",
+        message=f"Step 1 of 7: Downloading {len(reference_image_gcs_uris)} reference images...",
+        duration_seconds=0,
+        data={},
+    )
     reference_image_bytes_list = []
     with concurrent.futures.ThreadPoolExecutor() as executor:
         reference_image_bytes_list = list(
             executor.map(download_from_gcs, reference_image_gcs_uris)
         )
-    logger.info("Reference images downloaded successfully.")
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="download_images",
+        status="complete",
+        message="Reference images downloaded.",
+        duration_seconds=step_duration,
+        data={},
+    )
 
-    # 2. Generate descriptions
-    logger.info("Step 2: Generating descriptions for reference images...")
+    # Step 2: Generate descriptions
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="generate_descriptions",
+        status="processing",
+        message="Step 2 of 7: Generating descriptions for reference images...",
+        duration_seconds=0,
+        data={},
+    )
     with concurrent.futures.ThreadPoolExecutor() as executor:
         profiles = list(executor.map(get_facial_composite_profile, reference_image_bytes_list))
-    
     with concurrent.futures.ThreadPoolExecutor() as executor:
         all_descriptions = list(executor.map(get_natural_language_description, profiles))
-    
     character_description = all_descriptions[0]
-    logger.info("Descriptions generated successfully. Using first description as base.")
-
-    # 3. Generate Imagen prompt
-    logger.info("Step 3: Generating final scene prompt for Imagen...")
-    generated_prompts = generate_final_scene_prompt(
-        character_description, scene_prompt
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="generate_descriptions",
+        status="complete",
+        message="Descriptions generated.",
+        duration_seconds=step_duration,
+        data={"character_description": character_description},
     )
+
+    # Step 3: Generate Imagen prompt
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="generate_imagen_prompt",
+        status="processing",
+        message="Step 3 of 7: Generating scene prompt for Imagen...",
+        duration_seconds=0,
+        data={},
+    )
+    generated_prompts = generate_final_scene_prompt(character_description, scene_prompt)
     final_prompt = generated_prompts.prompt
     negative_prompt = generated_prompts.negative_prompt
-    logger.info("Imagen prompt generated successfully.")
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="generate_imagen_prompt",
+        status="complete",
+        message="Imagen prompt generated.",
+        duration_seconds=step_duration,
+        data={"imagen_prompt": final_prompt, "negative_prompt": negative_prompt},
+    )
 
-    # 4. Generate candidate images
-    logger.info("Step 4: Generating candidate images with Imagen...")
-    # TODO: Refactor to use models/image_models.py
+    # Step 4: Generate candidate images
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="generate_candidates",
+        status="processing",
+        message="Step 4 of 7: Generating candidate images with Imagen...",
+        duration_seconds=0,
+        data={},
+    )
+    # TODO: This part needs to be refactored to use models/image_models.py
     client = genai.Client(vertexai=True, project=cfg.PROJECT_ID, location=cfg.LOCATION)
     edit_model = cfg.CHARACTER_CONSISTENCY_IMAGEN_MODEL
-
     reference_images_for_generation = []
     for i, image_bytes in enumerate(reference_image_bytes_list):
         image = types.Image(image_bytes=image_bytes)
@@ -95,7 +150,6 @@ def generate_character_video(
                 ),
             )
         )
-
     response = client.models.edit_image(
         model=edit_model,
         prompt=final_prompt,
@@ -109,8 +163,6 @@ def generate_character_video(
             negative_prompt=negative_prompt,
         ),
     )
-    logger.info("Candidate images generated successfully.")
-
     candidate_image_gcs_uris = []
     candidate_image_bytes_list = []
     for i, image in enumerate(response.generated_images):
@@ -123,24 +175,51 @@ def generate_character_video(
         )
         candidate_image_gcs_uris.append(gcs_uri)
         candidate_image_bytes_list.append(image_bytes)
-    logger.info("Candidate images uploaded to GCS.")
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="generate_candidates",
+        status="complete",
+        message="Candidate images generated.",
+        duration_seconds=step_duration,
+        data={"candidate_image_gcs_uris": candidate_image_gcs_uris, "candidate_image_bytes_list": candidate_image_bytes_list},
+    )
 
-    # 5. Select the best image
-    logger.info("Step 5: Selecting the best image...")
+    # Step 5: Select the best image
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="select_best_image",
+        status="processing",
+        message="Step 5 of 7: Selecting the best image...",
+        duration_seconds=0,
+        data={},
+    )
     best_image_selection = select_best_image(
         reference_image_bytes_list, candidate_image_bytes_list, candidate_image_gcs_uris
     )
     best_image_gcs_uri = best_image_selection.best_image_path
-    logger.info("Best image selected: %s", best_image_gcs_uri)
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="select_best_image",
+        status="complete",
+        message="Best image selected.",
+        duration_seconds=step_duration,
+        data={"best_image_gcs_uri": best_image_gcs_uri},
+    )
 
-    # 6. Outpaint the best image
-    logger.info("Step 6: Outpainting the best image...")
+    # Step 6: Outpaint the best image
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="outpaint_image",
+        status="processing",
+        message="Step 6 of 7: Outpainting the best image...",
+        duration_seconds=0,
+        data={},
+    )
     best_image_bytes = None
     for i, gcs_uri in enumerate(candidate_image_gcs_uris):
         if gcs_uri == best_image_gcs_uri:
             best_image_bytes = candidate_image_bytes_list[i]
             break
-
     outpainted_image_bytes = _outpaint_image(best_image_bytes, final_prompt)
     outpainted_image_gcs_uri = store_to_gcs(
         folder="character_consistency_outpainted",
@@ -148,10 +227,24 @@ def generate_character_video(
         mime_type="image/png",
         contents=outpainted_image_bytes,
     )
-    logger.info("Best image outpainted successfully.")
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="outpaint_image",
+        status="complete",
+        message="Image outpainted.",
+        duration_seconds=step_duration,
+        data={"outpainted_image_gcs_uri": outpainted_image_gcs_uri, "outpainted_image_bytes": outpainted_image_bytes},
+    )
 
-    # 7. Generate Video
-    logger.info("Step 7: Generating video with Veo...")
+    # Step 7: Generate Video
+    step_start_time = time.time()
+    yield WorkflowStepResult(
+        step_name="generate_video",
+        status="processing",
+        message="Step 7 of 7: Generating final video with Veo...",
+        duration_seconds=0,
+        data={},
+    )
     video_bytes, veo_prompt = _generate_video_from_image(outpainted_image_bytes)
     video_gcs_uri = store_to_gcs(
         folder="character_consistency_videos",
@@ -159,9 +252,17 @@ def generate_character_video(
         mime_type="video/mp4",
         contents=video_bytes,
     )
-    logger.info("Video generated and uploaded to GCS successfully.")
+    step_duration = time.time() - step_start_time
+    yield WorkflowStepResult(
+        step_name="generate_video",
+        status="complete",
+        message="Final video generated.",
+        duration_seconds=step_duration,
+        data={"video_gcs_uri": video_gcs_uri, "veo_prompt": veo_prompt},
+    )
 
-    # 8. Save all metadata and artifacts to Firestore
+    # Step 8: Save all metadata and artifacts to Firestore
+    total_duration = time.time() - total_start_time
     logger.info("Step 8: Saving metadata to Firestore...")
     new_item = MediaItem(
         user_email=user_email,
@@ -178,10 +279,10 @@ def generate_character_video(
         outpainted_image=outpainted_image_gcs_uri,
         gcsuri=video_gcs_uri,
         veo_prompt=veo_prompt,
+        generation_time=total_duration,
     )
     add_media_item_to_firestore(new_item)
-    logger.info("Workflow complete. MediaItem ID: %s", new_item.id)
-    return new_item.id
+    logger.info("Workflow complete in %.2f seconds. MediaItem ID: %s", total_duration, new_item.id)
 
 def _generate_video_from_image(image_bytes: bytes) -> tuple[bytes, str]:
     """Generates a video from an image."""
