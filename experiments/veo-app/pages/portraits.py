@@ -546,6 +546,7 @@ Do not describe the frame. There should be no lip movement like speaking, but th
             model_version_id=state.veo_model,
             reference_image_gcs=state.reference_image_gcs,
             reference_image_mime_type=state.reference_image_mime_type,
+            person_generation="allow_adult",
         )
 
         gcs_uri, _ = generate_video(request)
