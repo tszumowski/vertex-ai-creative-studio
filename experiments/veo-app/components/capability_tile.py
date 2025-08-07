@@ -18,20 +18,24 @@ from typing import Optional
 import mesop as me
 
 
-def go_to_page(e: me.ClickEvent):
-    """go to  page"""
-    me.navigate(e.key)
+def on_tile_click(e: me.ClickEvent):
+    """Handles clicks on any tile, internal or external."""
+    if e.key.startswith("http"):
+        me.navigate(e.key, new_tab=True)
+    else:
+        me.navigate(e.key)
 
 
 @me.component
-def media_tile(label: str, icon: str, route: Optional[str]):
-    """Media component"""
-
-    is_clickable = bool(route)
+def media_tile(label: str, icon: str, route: Optional[str], external_url: Optional[str] = None):
+    """Media component that can handle internal routes and external URLs."""
+    
+    is_clickable = bool(route) or bool(external_url)
+    nav_key = route or external_url
 
     box_style = me.Style(
         display="flex",
-        flex_direction="row",
+        flex_direction="column",
         gap=5,
         align_items="center",
         border=me.Border().all(
@@ -42,20 +46,21 @@ def media_tile(label: str, icon: str, route: Optional[str]):
         width=160,
         justify_content="center",
         background=me.theme_var("secondary-container"),
-        cursor="pointer",
+        position="relative",
     )
 
     if is_clickable:
         box_style.cursor = "pointer"
     else:
-        # Optionally, style non-clickable items differently
-        box_style.opacity = 0.6  # Example: make it look disabled
+        box_style.opacity = 0.6
         box_style.cursor = "default"
+
     with me.box(
         style=box_style,
-        key=route if is_clickable else f"tile_{label}_{icon}",
-        on_click=go_to_page if is_clickable else None,
+        key=nav_key if is_clickable else f"tile_{label}_{icon}",
+        on_click=on_tile_click if is_clickable else None,
     ):
+        # This inner box is for the main content (icon and text)
         with me.box(
             style=me.Style(
                 display="flex",
@@ -63,7 +68,7 @@ def media_tile(label: str, icon: str, route: Optional[str]):
                 align_items="center",
                 font_size="18px",
                 gap=5,
-            ),
+            )
         ):
             me.icon(
                 icon,
@@ -75,3 +80,14 @@ def media_tile(label: str, icon: str, route: Optional[str]):
                 ),
             )
             me.text(label, style=me.Style(font_weight="medium", text_align="center"))
+
+        # "Open in new" icon is placed in a separate box for absolute positioning
+        if external_url:
+            with me.box(
+                style=me.Style(
+                    position="absolute",
+                    top=8,
+                    right=8,
+                ),
+            ):
+                me.icon("open_in_new", style=me.Style(font_size="18px", color=me.theme_var("on-surface-variant")))

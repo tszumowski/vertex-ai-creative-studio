@@ -105,6 +105,20 @@
       "route": "/config",
       "align": "bottom",
       "group": "studio"
+    },
+    {
+      "id": 110,
+      "display": "Creative Workflow",
+      "icon": "auto_awesome",
+      "group": "friends",
+      "external_url": "http://go/demos/demo/1333"
+    },
+    {
+      "id": 120,
+      "display": "StoryCraft",
+      "icon": "auto_stories",
+      "group": "friends",
+      "external_url": "https://storycraftv2.mblanc.demo.altostrat.com/"
     }
   ]
 }

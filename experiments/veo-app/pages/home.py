@@ -23,7 +23,7 @@ from components.header import header
 from config.default import get_welcome_page_config
 from state.state import AppState
 
-GROUP_ORDER = ["foundation", "workflows", "studio"]
+GROUP_ORDER = ["foundation", "workflows", "friends", "studio"]
 
 
 def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
@@ -53,14 +53,14 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
             ):
                 header("GenMedia Creative Studio", "home")
 
-                me.text(
-                    "Welcome to the v.next of Vertex AI GenMedia Creative Studio"
-                )
+                me.text("Welcome to the v.next of Vertex AI GenMedia Creative Studio")
 
                 # Group pages by the "group" key
                 grouped_pages: Dict[str, List[Dict]] = defaultdict(list)
                 pages_to_display = [
-                    page for page in get_welcome_page_config() if page.get("display") != "Home"
+                    page
+                    for page in get_welcome_page_config()
+                    if page.get("display") != "Home"
                 ]
 
                 for page_data in pages_to_display:
@@ -88,9 +88,9 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                             margin=me.Margin(top=24, bottom=12),
                             color=me.theme_var("on-surface"),
                             background=(
-                             "linear-gradient(90deg, rgb(0, 44, 112) 0%, rgb(7, 110, 255) 100%)"
-                             "text"
-                         ),
+                                "linear-gradient(90deg, rgb(0, 44, 112) 0%, rgb(7, 110, 255) 100%)"
+                                "text"
+                            ),
                         ),
                     )
 
@@ -107,7 +107,10 @@ def home_page_content(app_state: me.state):  # pylint: disable=unused-argument
                     ):
                         for page_data in items_in_group:
                             route = page_data.get("route")
+                            external_url = page_data.get("external_url")
                             icon = page_data.get("icon", "broken_image")
                             display_name = page_data.get("display", "Unnamed Page")
 
-                            media_tile(display_name, icon, route)
+                            media_tile(
+                                display_name, icon, route, external_url=external_url,
+                            )
