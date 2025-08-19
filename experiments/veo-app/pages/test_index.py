@@ -55,6 +55,11 @@ def page():
             "description": "A test page for the Pixie Compositor web component.",
             "route": "/test_pixie_compositor",
         },
+        {
+            "title": "Doodle Page",
+            "description": "A test page for the doodle component.",
+            "route": "/test_doodle",
+        },
     ]
 
     with me.box(

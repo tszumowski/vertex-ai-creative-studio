@@ -50,7 +50,7 @@ from pages.test_pixie_compositor import test_pixie_compositor_page
 from pages.test_uploader import test_uploader_page
 from pages.test_vto_prompt_generator import page as test_vto_prompt_generator_page
 from pages.test_worsfold_encoder import test_worsfold_encoder_page
-from pages.test_pixie_compositor import test_pixie_compositor_page
+from pages.test_doodle import doodle_page
 from pages.veo import veo_content
 from pages.vto import vto
 from state.state import AppState
@@ -128,7 +128,7 @@ async def add_global_csp(request: Request, call_next):
         "connect-src 'self' https://storage.mtls.cloud.google.com https://storage.googleapis.com https://*.googleusercontent.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: blob: https://storage.mtls.cloud.google.com https://storage.googleapis.com https://*.googleusercontent.com; "
+        "img-src 'self' data: blob: https://storage.mtls.cloud.google.com https://storage.googleapis.com https://*.googleusercontent.com https://google-ai-skin-tone-research.imgix.net; "
         "media-src 'self' https://storage.mtls.cloud.google.com https://storage.googleapis.com https://*.googleusercontent.com; "
         "worker-src 'self' blob:;"
     )
