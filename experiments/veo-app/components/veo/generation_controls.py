@@ -106,6 +106,19 @@ def generation_controls():
             on_selection_change=on_selection_change_person_generation,
         )
 
+    if selected_config.supports_audio_generation:
+        me.slide_toggle(
+            label="Generate audio",
+            on_change=on_change_generate_audio,
+            checked=state.generate_audio,
+        )
+
+def on_change_generate_audio(e: me.SlideToggleChangeEvent):
+    """Handles changes to the generate audio setting."""
+    state = me.state(PageState)
+    state.generate_audio = e.checked
+    yield
+
 
 def on_selection_change_person_generation(e: me.SelectSelectionChangeEvent):
     """Handles changes to the person generation setting."""

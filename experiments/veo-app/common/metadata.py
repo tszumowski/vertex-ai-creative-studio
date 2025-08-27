@@ -79,6 +79,7 @@ class MediaItem:
     # This field is for loading raw data from Firestore, not for writing.
     # It helps in debugging and displaying all stored fields if needed.
     raw_data: Optional[Dict] = field(default_factory=dict, compare=False, repr=False)
+    has_audio: bool = False
 
     # Character Consistency specific fields
     media_type: Optional[str] = None

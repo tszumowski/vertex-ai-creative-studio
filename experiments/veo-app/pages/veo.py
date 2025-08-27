@@ -193,6 +193,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
         last_reference_image_gcs=state.last_reference_image_gcs,
         reference_image_mime_type=state.reference_image_mime_type,
         last_reference_image_mime_type=state.last_reference_image_mime_type,
+        generate_audio=state.generate_audio,
     )
 
     item_to_log = MediaItem(
@@ -216,6 +217,7 @@ def on_click_veo(e: me.ClickEvent):  # pylint: disable=unused-argument
         last_reference_image=request.last_reference_image_gcs,
         negative_prompt=request.negative_prompt,
         enhanced_prompt_used=request.enhance_prompt,
+        has_audio=request.generate_audio,
         comment="veo default generation",
     )
 

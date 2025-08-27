@@ -66,6 +66,8 @@ def generate_video(request: VideoGenerationRequest) -> tuple[str, str]:
     }
     if request.negative_prompt:
         gen_config_args["negative_prompt"] = request.negative_prompt
+    if request.generate_audio:
+        gen_config_args["generate_audio"] = request.generate_audio
 
     # Prepare Image and Video Inputs
     image_input = None

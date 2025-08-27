@@ -36,6 +36,7 @@ class PageState:
     aspect_ratio: str = "16:9"
     resolution: str = "720p"
     video_length: int = 5  # 5-8
+    generate_audio: bool = False
 
     # I2V reference Image
     reference_image_file: me.UploadedFile = None

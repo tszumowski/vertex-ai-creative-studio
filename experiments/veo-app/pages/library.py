@@ -190,6 +190,7 @@ def get_media_for_page(
                 if raw_item_data.get("negative_prompt") is not None
                 else None,
                 enhanced_prompt_used=raw_item_data.get("enhanced_prompt"),
+                has_audio=raw_item_data.get("has_audio", False),
                 duration=item_duration,
                 error_message=str(raw_item_data.get("error_message"))
                 if raw_item_data.get("error_message") is not None
@@ -519,6 +520,8 @@ def library_content(app_state: me.state):
                                         pill(item_duration_str, "duration")
                                     if m_item.resolution:
                                         pill(m_item.resolution, "resolution")
+                                    if m_item.has_audio:
+                                        pill("Audio", "audio_present")
                                     pill("24 fps", "fps")
                                     if (
                                         m_item.enhanced_prompt_used

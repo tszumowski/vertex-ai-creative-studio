@@ -30,6 +30,7 @@ class VeoModelConfig:
     max_samples: int
     default_samples: int
     supports_prompt_enhancement: bool
+    supports_audio_generation: bool = False
 
 # This list is the single source of truth for all VEO model configurations.
 VEO_MODELS: List[VeoModelConfig] = [
@@ -60,6 +61,7 @@ VEO_MODELS: List[VeoModelConfig] = [
         max_samples=2,
         default_samples=1,
         supports_prompt_enhancement=False,
+        supports_audio_generation=True,
     ),
     VeoModelConfig(
         version_id="3.0-fast",
@@ -74,6 +76,7 @@ VEO_MODELS: List[VeoModelConfig] = [
         max_samples=2,
         default_samples=1,
         supports_prompt_enhancement=False,
+        supports_audio_generation=True,
     ),
 ]
 
