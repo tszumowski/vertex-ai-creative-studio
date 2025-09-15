@@ -23,7 +23,7 @@ import mesop as me
 
 from common.metadata import add_media_item
 from common.storage import store_to_gcs
-from common.utils import gcs_uri_to_https_url
+from common.utils import gcs_uri_to_https_url, proxy_url_to_gcs_uri
 from components.header import header
 from components.library.events import LibrarySelectionChangeEvent
 from components.library.library_chooser_button import library_chooser_button
@@ -173,9 +173,13 @@ def on_generate(e: me.ClickEvent):
     yield
 
     try:
+        # Convert proxy URLs back to GCS URIs for the API call
+        person_gcs_uri = proxy_url_to_gcs_uri(state.person_image_gcs)
+        product_gcs_uri = proxy_url_to_gcs_uri(state.product_image_gcs)
+        
         result_gcs_uris = generate_vto_image(
-            state.person_image_gcs,
-            state.product_image_gcs,
+            person_gcs_uri,
+            product_gcs_uri,
             state.vto_sample_count,
             state.vto_base_steps,
         )
@@ -188,8 +192,8 @@ def on_generate(e: me.ClickEvent):
             model=config.VTO_MODEL_ID,
             mime_type="image/png",
             gcs_uris=result_gcs_uris,
-            person_image_gcs=state.person_image_gcs,
-            product_image_gcs=state.product_image_gcs,
+            person_image_gcs=person_gcs_uri,
+            product_image_gcs=product_gcs_uri,
         )
     except Exception as e:
         state.error_message = str(e)

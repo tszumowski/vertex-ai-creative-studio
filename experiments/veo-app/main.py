@@ -118,6 +118,76 @@ def get_signed_url(gcs_uri: str):
         return {"error": error_message}, 500
 
 
+@app.get("/api/get_signed_url_proxy")
+async def get_signed_url_proxy(gcs_uri: str):
+    """Proxies GCS content by generating a signed URL and returning the actual content."""
+    try:
+        credentials, _ = google.auth.default()
+
+        signing_credentials = impersonated_credentials.Credentials(
+            source_credentials=credentials,
+            target_principal=config.Default.SERVICE_ACCOUNT_EMAIL,
+            target_scopes="https://www.googleapis.com/auth/devstorage.read_only",
+        )
+
+        storage_client = storage.Client()
+        bucket_name, blob_name = gcs_uri.replace("gs://", "").split("/", 1)
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(minutes=15),
+            method="GET",
+            credentials=signing_credentials
+        )
+
+        # Fetch the content using the signed URL
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(signed_url)
+            response.raise_for_status()
+            
+            # Determine content type based on file extension
+            content_type = "application/octet-stream"
+            if blob_name.lower().endswith(('.png', '.jpg', '.jpeg')):
+                content_type = f"image/{blob_name.split('.')[-1].lower().replace('jpg', 'jpeg')}"
+            elif blob_name.lower().endswith(('.mp4', '.webm', '.mov')):
+                content_type = f"video/{blob_name.split('.')[-1].lower()}"
+            elif blob_name.lower().endswith(('.mp3', '.wav', '.ogg')):
+                content_type = f"audio/{blob_name.split('.')[-1].lower()}"
+            
+            # Extract just the filename from the blob path for proper downloads
+            filename = blob_name.split('/')[-1]
+            
+            from fastapi.responses import Response
+            return Response(
+                content=response.content,
+                media_type=content_type,
+                headers={
+                    "Cache-Control": "public, max-age=3600",
+                    "Access-Control-Allow-Origin": "*",
+                    "Content-Disposition": f'inline; filename="{filename}"'
+                }
+            )
+
+    except Exception as e:
+        error_message = str(e)
+        print(f"Error proxying GCS content: {error_message}")
+        if "private key" in error_message:
+            print(
+                "This error often occurs in a local development environment. "
+                "Please ensure you have authenticated with service account impersonation by running: "
+                "gcloud auth application-default login --impersonate-service-account=<YOUR_SERVICE_ACCOUNT_EMAIL>"
+            )
+        from fastapi.responses import Response
+        return Response(
+            content=f"Error loading content: {error_message}",
+            status_code=500,
+            media_type="text/plain"
+        )
+
+
 @app.middleware("http")
 async def add_global_csp(request: Request, call_next):
     response = await call_next(request)
